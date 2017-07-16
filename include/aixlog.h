@@ -31,6 +31,9 @@
 #include <sstream>
 #include <ios>
 #include <stdexcept>
+#include <functional>
+#include <vector>
+#include <memory>
 
 
 #define LOG(P) std::clog << (LogPriority)P << kNoSyslog
@@ -47,6 +50,14 @@ enum SysLog
 };
 
 
+enum LogSinkType
+{
+	kTypeLog = 0,
+	kTypeSyslog = 1,
+	kTypeBoth = 2
+};
+
+
 enum LogPriority
 {
 	kLogEmerg   = LOG_EMERG,   // 0 system is unusable
@@ -60,8 +71,21 @@ enum LogPriority
 };
 
 
+typedef std::function<void(LogPriority priority, const std::string& message)>  log_callback;
+
+
 std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
 std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog);
+
+
+struct LogSink
+{
+	virtual void log(LogPriority priority, const std::string& message) const = 0;
+	virtual LogSinkType get_type() const = 0;
+};
+
+
+typedef std::shared_ptr<LogSink> log_sink_ptr;
 
 
 class Log : public std::basic_streambuf<char, std::char_traits<char> >
@@ -96,7 +120,12 @@ public:
 		loglevel_ = priority;
 	}
 
-	void enable_syslog(const char* ident)//, int facility)
+	void set_logcallback(log_callback on_log)
+	{
+		on_log_ = on_log;
+	}
+
+	void enable_syslog(const char* ident)
 	{
 		openlog(ident, LOG_PID, LOG_USER);
 		syslog_enabled_ = true;
@@ -111,6 +140,7 @@ public:
 
 protected:
 	Log() :	
+		on_log_(nullptr),
 		syslog_(kNoSyslog),
 		ostream_(&std::cout),
 		loglevel_(kLogDebug),
@@ -126,7 +156,7 @@ protected:
 		if (!buffer_.str().empty())
 		{
 			if (
-				(syslog_enabled_ && (syslog_ == kSyslog)) || // && (syslogpriority_ <= loglevel_)) || 
+				(syslog_enabled_ && (syslog_ == kSyslog)) ||
 				(priority_ <= loglevel_)
 			)
 			{			
@@ -137,6 +167,8 @@ protected:
 					if (!timestamp_format_.empty())
 						*ostream_ << Timestamp() << " ";
 					*ostream_ << prio << buffer_.str() << std::endl;//flush;
+					if (on_log_)
+						on_log_(priority_, buffer_.str());
 				}
 				if (syslog_enabled_ && (syslog_ == kSyslog)) // && (syslogpriority_ <= loglevel_))
 				{
@@ -215,6 +247,8 @@ private:
 		return std::string(buffer);
 	}
 
+	log_callback on_log_;
+
 	std::stringstream buffer_;
 	LogPriority priority_;
 	SysLog syslog_;
@@ -222,7 +256,54 @@ private:
 	LogPriority loglevel_;
 	std::string timestamp_format_;
 	bool syslog_enabled_;
+	std::vector<log_sink_ptr> logSinks;
 };
+
+
+
+struct LogSinkCout : public LogSink
+{
+	virtual void log(LogPriority priority, const std::string& message) const
+	{
+
+	}
+
+	virtual LogSinkType get_type() const
+	{
+		return kTypeBoth;
+	}
+};
+
+
+
+struct LogSinkCerr : public LogSink
+{
+	virtual void log(LogPriority priority, const std::string& message) const
+	{
+
+	}
+
+	virtual LogSinkType get_type() const
+	{
+		return kTypeBoth;
+	}
+};
+
+
+
+struct LogSinkSyslog : public LogSink
+{
+	virtual void log(LogPriority priority, const std::string& message) const
+	{
+
+	}
+
+	virtual LogSinkType get_type() const
+	{
+		return kTypeSyslog;
+	}
+};
+
 
 
 std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
