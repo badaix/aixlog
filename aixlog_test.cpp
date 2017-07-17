@@ -25,8 +25,14 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	Log::init(cout, kLogWarning);
-	Log::instance().enable_syslog("test");
+	Log::init(
+		{
+			make_shared<LogSinkCout>(kLogCrit),
+			make_shared<LogSinkCerr>(kLogDebug),
+			make_shared<LogSinkSyslog>("test"),
+			make_shared<LogSinkAndroid>(kLogDebug)}
+		);
+
 	LOG(LOG_EMERG) << "Log emerg\nSecond line\n";
 	LOG(LOG_EMERG) << "Log emerg 2";
 	LOG(LOG_EMERG) << "Log Second line 2";
@@ -40,22 +46,18 @@ int main(int argc, char** argv)
 	cout << "cout\n";
 	cerr << "cerr\n";
 
-	//Log::init(cerr, kLogInfo);
-	//syslog(1, "%s", "Test1");
-	SLOG(LOG_EMERG) << "Log emerg\nSecond line\n";
-	SLOG(LOG_EMERG) << "Log emerg 2";
-	SLOG(LOG_EMERG) << "Log Second line 2";
-	SLOG(LOG_ALERT) << "Log alert\n";
-	SLOG(LOG_CRIT) << "Log crit\n";
-	//Log::instance().disable_syslog();
-	SLOG(LOG_ERR) << "Log err\n";
-	SLOG(LOG_WARNING) << "Log warning\n";
-	SLOG(LOG_NOTICE) << "Log notice\n";
-	SLOG(LOG_INFO) << "Log info\n";
-	SLOG(LOG_DEBUG) << "Log debug\n";
+	SLOG(LOG_EMERG) << "SysLog emerg\nSecond line\n";
+	SLOG(LOG_EMERG) << "SysLog emerg 2";
+	SLOG(LOG_EMERG) << "SysLog Second line 2";
+	SLOG(LOG_ALERT) << "SysLog alert\n";
+	SLOG(LOG_CRIT) << "SysLog crit\n";
+	SLOG(LOG_ERR) << "SysLog err\n";
+	SLOG(LOG_WARNING) << "SysLog warning\n";
+	SLOG(LOG_NOTICE) << "SysLog notice\n";
+	SLOG(LOG_INFO) << "SysLog info\n";
+	SLOG(LOG_DEBUG) << "SysLog debug\n";
 
 	LOG(LOG_ALERT) << "Log alert\n";
-	Log::instance().set_loglevel(kLogDebug);
 	LOGD << "Debug\n";
 	LOGI << "Info\n";
 	LOGE << "Error\n";

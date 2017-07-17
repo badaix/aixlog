@@ -23,38 +23,32 @@
 #define LOG_H
 
 #include <syslog.h>
-#include <ctime>
-#include <cstdio>
-#include <cstring>
-#include <iomanip>
+#include <algorithm>
 #include <iostream>
 #include <sstream>
-#include <ios>
-#include <stdexcept>
-#include <functional>
 #include <vector>
 #include <memory>
+#include <chrono>
+#ifdef ANDROID
+#include <android/log.h>
+#endif
 
 
 #define LOG(P) std::clog << (LogPriority)P << kNoSyslog
 #define SLOG(P) std::clog << (LogPriority)P << kSyslog
 #define LOGD LOG(kLogDebug)
 #define LOGI LOG(kLogInfo)
+#define LOGN LOG(kLogNotice)
+#define LOGW LOG(kLogWarning)
 #define LOGE LOG(kLogErr)
+#define LOGC LOG(kLogCrit)
+#define LOGA LOG(kLogAlert)
 
 
 enum SysLog
 {
 	kNoSyslog = 0,
 	kSyslog = 1
-};
-
-
-enum LogSinkType
-{
-	kTypeLog = 0,
-	kTypeSyslog = 1,
-	kTypeBoth = 2
 };
 
 
@@ -71,17 +65,35 @@ enum LogPriority
 };
 
 
-typedef std::function<void(LogPriority priority, const std::string& message)>  log_callback;
-
-
 std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
 std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog);
 
 
 struct LogSink
 {
-	virtual void log(LogPriority priority, const std::string& message) const = 0;
-	virtual LogSinkType get_type() const = 0;
+	enum LogSinkType
+	{
+		kTypeLog = 0,
+		kTypeSysLog = 1,
+		kTypeAllLog = 2
+	};
+
+	LogSink(LogPriority priority = kLogDebug) : priority(priority), sink_type_(kTypeAllLog)
+	{
+	}
+
+	virtual ~LogSink()
+	{
+	}
+
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const = 0;
+	virtual LogSinkType get_type() const
+	{
+		return sink_type_;
+	}
+
+	LogPriority priority;
+	LogSinkType sink_type_;
 };
 
 
@@ -97,120 +109,26 @@ public:
 		return instance_;
 	}
 
-	static void init(std::ostream& ostream, LogPriority loglevel, const std::string& timestamp_format = "%Y-%m-%d %H-%M-%S")
+	/// Without "init" every LOG(X) will simply go to clog
+	static void init(const std::vector<log_sink_ptr> log_sinks = {})
 	{
-		Log::instance().set_timestamp_format(timestamp_format);
-		Log::instance().set_ostream(ostream);
-		Log::instance().set_loglevel(loglevel);
+		for (auto sink: log_sinks)
+			Log::instance().add_logsink(sink);
+
 		std::clog.rdbuf(&Log::instance());
 	}
 
-	void set_timestamp_format(const std::string& format)
+	void add_logsink(log_sink_ptr sink)
 	{
-		timestamp_format_ = format;
+		logSinks.push_back(sink);
 	}
 
-	void set_ostream(std::ostream& ostream)
+	void remove_logsink(log_sink_ptr sink)
 	{
-		ostream_ = &ostream;
+		logSinks.erase(std::remove(logSinks.begin(), logSinks.end(), sink), logSinks.end());
 	}
 
-	void set_loglevel(LogPriority priority)
-	{
-		loglevel_ = priority;
-	}
-
-	void set_logcallback(log_callback on_log)
-	{
-		on_log_ = on_log;
-	}
-
-	void enable_syslog(const char* ident)
-	{
-		openlog(ident, LOG_PID, LOG_USER);
-		syslog_enabled_ = true;
-	}
-
-	void disable_syslog()
-	{
-		syslog_enabled_ = false;
-		closelog();
-	}
-
-
-protected:
-	Log() :	
-		on_log_(nullptr),
-		syslog_(kNoSyslog),
-		ostream_(&std::cout),
-		loglevel_(kLogDebug),
-		timestamp_format_("%Y-%m-%d %H-%M-%S"),
-		syslog_enabled_(false)
-	{
-		if (*ostream_ == std::clog)
-			throw std::invalid_argument("clog is not allowed as output stream");
-	}
-
-	int sync()
-	{
-		if (!buffer_.str().empty())
-		{
-			if (
-				(syslog_enabled_ && (syslog_ == kSyslog)) ||
-				(priority_ <= loglevel_)
-			)
-			{			
-				std::string prio = "[" + toString(priority_) + "]";
-				prio.resize(6 + 2, ' ');
-				if (priority_ <= loglevel_)
-				{
-					if (!timestamp_format_.empty())
-						*ostream_ << Timestamp() << " ";
-					*ostream_ << prio << buffer_.str() << std::endl;//flush;
-					if (on_log_)
-						on_log_(priority_, buffer_.str());
-				}
-				if (syslog_enabled_ && (syslog_ == kSyslog)) // && (syslogpriority_ <= loglevel_))
-				{
-					syslog((int)priority_, "%s", buffer_.str().c_str());
-				}
-			}
-			buffer_.str("");
-			buffer_.clear();
-			//priority_ = kLogDebug; // default to debug for each message
-			//syslog_ = kNoSyslog;
-		}
-		return 0;
-	}
-
-	int overflow(int c)
-	{
-		if (
-				(priority_ > loglevel_) && 
-				((syslog_ == kNoSyslog) || !syslog_enabled_) // || (syslogpriority_ > loglevel_))
-		)
-			return c;
-		if (c != EOF)
-		{
-			if (c == '\n')
-				sync();
-			else
-				buffer_ << static_cast<char>(c);
-		}
-		else
-		{
-			std::cout << "EOF\n";
-			sync();
-		}
-		return c;
-	}
-
-
-private:
-	friend std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
-	friend std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog);
-
-	std::string toString(LogPriority logPriority) const
+	static std::string toString(LogPriority logPriority)
 	{
 		switch (logPriority)
 		{
@@ -237,55 +155,144 @@ private:
 		}
 	}
 
-	std::string Timestamp() const
+
+protected:
+	Log() :	syslog_(kNoSyslog)
 	{
-		struct tm * dt;
-		char buffer[30];
-		std::time_t t = std::time(nullptr);
-		dt = localtime(&t);
-		strftime(buffer, sizeof(buffer), timestamp_format_.c_str(), dt);
-		return std::string(buffer);
 	}
 
-	log_callback on_log_;
+	int sync()
+	{
+		if (!buffer_.str().empty())
+		{
+			auto now = std::chrono::system_clock::now();
+			for (const auto sink: logSinks)
+			{
+				if (
+						(sink->get_type() == LogSink::kTypeAllLog) ||
+						((syslog_ == kSyslog) && (sink->get_type() == LogSink::kTypeSysLog)) ||
+						((syslog_ == kNoSyslog) && (sink->get_type() == LogSink::kTypeLog))
+				)
+					if (priority_ <= sink->priority)
+						sink->log(now, priority_, buffer_.str());
+			}
+			buffer_.str("");
+			buffer_.clear();
+			//priority_ = kLogDebug; // default to debug for each message
+			//syslog_ = kNoSyslog;
+		}
+		return 0;
+	}
+
+	int overflow(int c)
+	{
+/*		if (
+				(priority_ > loglevel_) && 
+				((syslog_ == kNoSyslog) || !syslog_enabled_) // || (syslogpriority_ > loglevel_))
+		)
+			return c;
+*/		if (c != EOF)
+		{
+			if (c == '\n')
+				sync();
+			else
+				buffer_ << static_cast<char>(c);
+		}
+		else
+		{
+			std::cout << "EOF\n";
+			sync();
+		}
+		return c;
+	}
+
+
+private:
+	friend std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
+	friend std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog);
 
 	std::stringstream buffer_;
 	LogPriority priority_;
 	SysLog syslog_;
-	std::ostream* ostream_;
-	LogPriority loglevel_;
-	std::string timestamp_format_;
-	bool syslog_enabled_;
 	std::vector<log_sink_ptr> logSinks;
 };
 
 
 
-struct LogSinkCout : public LogSink
-{
-	virtual void log(LogPriority priority, const std::string& message) const
-	{
 
+struct LogSinkWithTimestamp : public LogSink
+{
+	LogSinkWithTimestamp(LogPriority priority, const std::string& timestamp_format = "%Y-%m-%d %H-%M-%S") : 
+		LogSink(priority), 
+		timestamp_format_(timestamp_format)
+	{
 	}
+
+	virtual void set_timestamp_format(const std::string& format)
+	{
+		timestamp_format_ = format;
+	}
+
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const = 0;
 
 	virtual LogSinkType get_type() const
 	{
-		return kTypeBoth;
+		return kTypeAllLog;
+	}
+
+protected:
+	
+	virtual void do_log(std::ostream& stream, const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	{
+		std::string prio = "[" + Log::toString(priority) + "]";
+		prio.resize(6 + 2, ' ');
+		if (!timestamp_format_.empty())
+			stream << Timestamp(timestamp, timestamp_format_) << " ";
+		stream << prio << message << std::endl;
+	}
+
+	std::string Timestamp(const std::chrono::time_point<std::chrono::system_clock>& timestamp, const std::string& format) const
+	{
+		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
+		struct::tm now_tm = *std::localtime(&now_c);
+
+		char buffer[256];
+		strftime(buffer, sizeof buffer, format.c_str(), &now_tm);
+		return std::string(buffer);
+	}
+
+	std::string timestamp_format_;
+};
+
+
+
+struct LogSinkCout : public LogSinkWithTimestamp
+{
+	LogSinkCout(LogPriority priority, const std::string& timestamp_format = "%Y-%m-%d %H-%M-%S") :
+		LogSinkWithTimestamp(priority, timestamp_format)
+	{
+	}
+
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	{
+		if (priority <= this->priority)
+			do_log(std::cout, timestamp, priority, message);
 	}
 };
 
 
 
-struct LogSinkCerr : public LogSink
+struct LogSinkCerr : public LogSinkWithTimestamp
 {
-	virtual void log(LogPriority priority, const std::string& message) const
+	LogSinkCerr(LogPriority priority, const std::string& timestamp_format = "%Y-%m-%d %H-%M-%S") :
+		LogSinkWithTimestamp(priority, timestamp_format)
 	{
-
 	}
 
-	virtual LogSinkType get_type() const
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
 	{
-		return kTypeBoth;
+		if (priority <= this->priority)
+			do_log(std::cerr, timestamp, priority, message);
 	}
 };
 
@@ -293,16 +300,76 @@ struct LogSinkCerr : public LogSink
 
 struct LogSinkSyslog : public LogSink
 {
-	virtual void log(LogPriority priority, const std::string& message) const
+	LogSinkSyslog(const char* ident) : LogSink(kLogDebug)
 	{
+		openlog(ident, LOG_PID, LOG_USER);
+	}
 
+	virtual ~LogSinkSyslog()
+	{
+		closelog();
+	}
+
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	{
+		syslog((int)priority, "%s", message.c_str());
 	}
 
 	virtual LogSinkType get_type() const
 	{
-		return kTypeSyslog;
+		return kTypeSysLog;
 	}
 };
+
+
+
+struct LogSinkAndroid : public LogSink
+{
+	LogSinkAndroid(LogPriority priority, const std::string& default_tag = "") : LogSink(priority), default_tag_(default_tag)
+	{
+	}
+
+#ifdef ANDROID
+	android_LogPriority get_android_prio(LogPriority priority) const
+	{
+		switch (priority)
+		{
+			case kLogEmerg:
+			case kLogAlert:
+			case kLogCrit:
+				return ANDROID_LOG_FATAL;
+			case kLogErr:
+				return ANDROID_LOG_ERROR;
+			case kLogWarning:
+				return ANDROID_LOG_WARN;
+			case kLogNotice:
+				return ANDROID_LOG_DEFAULT;
+			case kLogInfo:
+				return ANDROID_LOG_INFO;
+			case kLogDebug:
+				return ANDROID_LOG_DEBUG;
+			default: 
+				return ANDROID_LOG_UNKNOWN;
+		}
+	}
+#endif
+
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	{
+#ifdef ANDROID
+		__android_log_write(get_android_prio(priority), default_tag_.c_str(), message.c_str());
+#endif
+	}
+
+	virtual LogSinkType get_type() const
+	{
+		return kTypeAllLog;
+	}
+
+protected:
+	std::string default_tag_;
+};
+
 
 
 
