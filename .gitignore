@@ -33,4 +33,10 @@
 
 # CMake
 build
+
+#test binary
 aixlog_test
+
+#vscode
+.vscode
+
