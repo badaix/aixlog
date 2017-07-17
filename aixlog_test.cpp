@@ -30,8 +30,9 @@ int main(int argc, char** argv)
 			make_shared<LogSinkCout>(kLogCrit),
 			make_shared<LogSinkCerr>(kLogDebug),
 			make_shared<LogSinkSyslog>("test"),
-			make_shared<LogSinkAndroid>(kLogDebug)}
-		);
+			make_shared<LogSinkAndroid>(kLogDebug)
+		}
+	);
 
 	LOG(LOG_EMERG) << "Log emerg\nSecond line\n";
 	LOG(LOG_EMERG) << "Log emerg 2";

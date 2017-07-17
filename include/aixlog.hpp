@@ -19,8 +19,8 @@
 /// inspired by "eater": 
 /// https://stackoverflow.com/questions/2638654/redirect-c-stdclog-to-syslog-on-unix
 
-#ifndef AIX_LOG_H
-#define AIX_LOG_H
+#ifndef AIX_LOG_HPP
+#define AIX_LOG_HPP
 
 #include <syslog.h>
 #include <algorithm>
@@ -405,6 +405,6 @@ std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog)
 
 
 
-#endif /// AIX_LOG_H
+#endif /// AIX_LOG_HPP
 
 
