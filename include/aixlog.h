@@ -251,6 +251,7 @@ protected:
 		stream << prio << message << std::endl;
 	}
 
+	/// strftime format + proprietary "#ms" for milliseconds
 	std::string Timestamp(const std::chrono::time_point<std::chrono::system_clock>& timestamp, const std::string& format) const
 	{
 		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
@@ -258,7 +259,17 @@ protected:
 
 		char buffer[256];
 		strftime(buffer, sizeof buffer, format.c_str(), &now_tm);
-		return std::string(buffer);
+		std::string result = buffer;
+		size_t ms_pos = format.find("#ms");
+		if (ms_pos != std::string::npos)
+		{
+			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(timestamp).time_since_epoch().count() % 1000;
+			std::string ms = std::to_string(ms_part);
+			while (ms.size() < 3)
+				ms = '0' + ms;
+			result.replace(ms_pos + 2, 3, ms);
+		}
+		return result;
 	}
 
 	std::string timestamp_format_;
