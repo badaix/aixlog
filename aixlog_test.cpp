@@ -17,7 +17,7 @@
 ***/
 
 
-#include "aixlog.h"
+#include "aixlog.hpp"
 
 using namespace std;
 

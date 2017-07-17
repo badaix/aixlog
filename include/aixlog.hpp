@@ -220,17 +220,17 @@ private:
 
 
 
-struct LogSinkWithTimestamp : public LogSink
+struct LogSinkFormat : public LogSink
 {
-	LogSinkWithTimestamp(LogPriority priority, const std::string& timestamp_format = "%Y-%m-%d %H-%M-%S") : 
+	LogSinkFormat(LogPriority priority, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] #logline") : 
 		LogSink(priority), 
-		timestamp_format_(timestamp_format)
+		format_(format)
 	{
 	}
 
-	virtual void set_timestamp_format(const std::string& format)
+	virtual void set_format(const std::string& format)
 	{
-		timestamp_format_ = format;
+		format_ = format;
 	}
 
 	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const = 0;
@@ -242,45 +242,45 @@ struct LogSinkWithTimestamp : public LogSink
 
 protected:
 	
-	virtual void do_log(std::ostream& stream, const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
-	{
-		std::string prio = "[" + Log::toString(priority) + "]";
-		prio.resize(6 + 2, ' ');
-		if (!timestamp_format_.empty())
-			stream << Timestamp(timestamp, timestamp_format_) << " ";
-		stream << prio << message << std::endl;
-	}
-
 	/// strftime format + proprietary "#ms" for milliseconds
-	std::string Timestamp(const std::chrono::time_point<std::chrono::system_clock>& timestamp, const std::string& format) const
+	virtual void do_log(std::ostream& stream, const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
 	{
 		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
 		struct::tm now_tm = *std::localtime(&now_c);
 
 		char buffer[256];
-		strftime(buffer, sizeof buffer, format.c_str(), &now_tm);
+		strftime(buffer, sizeof buffer, format_.c_str(), &now_tm);
 		std::string result = buffer;
-		size_t ms_pos = format.find("#ms");
-		if (ms_pos != std::string::npos)
+		size_t pos = result.find("#ms");
+		if (pos != std::string::npos)
 		{
 			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(timestamp).time_since_epoch().count() % 1000;
 			std::string ms = std::to_string(ms_part);
 			while (ms.size() < 3)
 				ms = '0' + ms;
-			result.replace(ms_pos + 2, 3, ms);
+			result.replace(pos, 3, ms);
 		}
-		return result;
+
+		pos = result.find("#prio");
+		if (pos != std::string::npos)
+			result.replace(pos, 5, Log::toString(priority));
+
+		pos = result.find("#logline");
+		if (pos != std::string::npos)
+			result.replace(pos, 8, message);
+
+		stream << result << std::endl;
 	}
 
-	std::string timestamp_format_;
+	std::string format_;
 };
 
 
 
-struct LogSinkCout : public LogSinkWithTimestamp
+struct LogSinkCout : public LogSinkFormat
 {
-	LogSinkCout(LogPriority priority, const std::string& timestamp_format = "%Y-%m-%d %H-%M-%S") :
-		LogSinkWithTimestamp(priority, timestamp_format)
+	LogSinkCout(LogPriority priority, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] #logline") :
+		LogSinkFormat(priority, format)
 	{
 	}
 
@@ -293,10 +293,10 @@ struct LogSinkCout : public LogSinkWithTimestamp
 
 
 
-struct LogSinkCerr : public LogSinkWithTimestamp
+struct LogSinkCerr : public LogSinkFormat
 {
-	LogSinkCerr(LogPriority priority, const std::string& timestamp_format = "%Y-%m-%d %H-%M-%S") :
-		LogSinkWithTimestamp(priority, timestamp_format)
+	LogSinkCerr(LogPriority priority, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] #logline") :
+		LogSinkFormat(priority, format)
 	{
 	}
 
