@@ -28,12 +28,14 @@ int main(int argc, char** argv)
 	Log::init(
 		{
 			make_shared<LogSinkCout>(LogPriority::critical, LogSink::Type::all),
+			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::all, ""),
 			make_shared<LogSinkSyslog>("test", LogPriority::debug, LogSink::Type::special)
 //			make_shared<LogSinkSyslog>("test")->set_type(LogSink::Type::all)
 //			make_shared<LogSinkCerr>(LogPriority::debug),
 //			make_shared<LogSinkAndroid>(LogPriority::debug)
 		}
 	);
+
 
 	LOG(LOG_EMERG) << "Log emerg\nSecond line\n";
 	LOG(LOG_EMERG) << TAG("hallo") << "Log emerg 2";

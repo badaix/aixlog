@@ -261,7 +261,7 @@ private:
 
 struct LogSinkFormat : public LogSink
 {
-	LogSinkFormat(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag) #logline") : 
+	LogSinkFormat(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag)") : // #logline") : 
 		LogSink(priority, type), 
 		format_(format)
 	{
@@ -308,9 +308,17 @@ protected:
 
 		pos = result.find("#logline");
 		if (pos != std::string::npos)
+		{
 			result.replace(pos, 8, message);
-
-		stream << result << std::endl;
+			stream << result << std::endl;
+		}
+		else
+		{
+			if (result.empty())
+				stream << message << std::endl;
+			else
+				stream << result << " " << message << std::endl;
+		}
 	}
 
 	std::string format_;
@@ -320,7 +328,7 @@ protected:
 
 struct LogSinkCout : public LogSinkFormat
 {
-	LogSinkCout(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline") :
+	LogSinkCout(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
 		LogSinkFormat(priority, type, format)
 	{
 	}
@@ -336,7 +344,7 @@ struct LogSinkCout : public LogSinkFormat
 
 struct LogSinkCerr : public LogSinkFormat
 {
-	LogSinkCerr(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline") :
+	LogSinkCerr(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
 		LogSinkFormat(priority, type, format)
 	{
 	}
@@ -354,7 +362,6 @@ struct LogSinkSyslog : public LogSink
 {
 	LogSinkSyslog(const char* ident, LogPriority priority, Type type) : LogSink(priority, type)
 	{
-		sink_type_ = Type::special;
 		openlog(ident, LOG_PID, LOG_USER);
 	}
 
@@ -375,7 +382,6 @@ struct LogSinkAndroid : public LogSink
 {
 	LogSinkAndroid(LogPriority priority, Type type = Type::all, const std::string& default_tag = "") : LogSink(priority, type), default_tag_(default_tag)
 	{
-		sink_type_ = Type::all;
 	}
 
 #ifdef ANDROID
@@ -418,8 +424,8 @@ protected:
 
 std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
 {
-	Log* log = static_cast<Log*>(os.rdbuf());
-	if (log->priority_ != log_priority)
+	Log* log = dynamic_cast<Log*>(os.rdbuf());
+	if (log && (log->priority_ != log_priority))
 	{
 		log->sync();
 		log->priority_ = log_priority;
@@ -431,7 +437,9 @@ std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
 
 std::ostream& operator<< (std::ostream& os, const LogType& log_type)
 {
-	static_cast<Log*>(os.rdbuf())->type_ = log_type;
+	Log* log = dynamic_cast<Log*>(os.rdbuf());
+	if (log)
+		log->type_ = log_type;
 	return os;
 }
 
@@ -439,7 +447,9 @@ std::ostream& operator<< (std::ostream& os, const LogType& log_type)
 
 std::ostream& operator<< (std::ostream& os, const TAG& tag)
 {
-	static_cast<Log*>(os.rdbuf())->tag_ = tag;
+	Log* log = dynamic_cast<Log*>(os.rdbuf());
+	if (log)
+		log->tag_ = tag;
 	return os;
 }
 
