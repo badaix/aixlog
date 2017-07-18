@@ -27,20 +27,21 @@ int main(int argc, char** argv)
 {
 	Log::init(
 		{
-			make_shared<LogSinkCout>(kLogCrit),
-			make_shared<LogSinkCerr>(kLogDebug),
-			make_shared<LogSinkSyslog>("test"),
-			make_shared<LogSinkAndroid>(kLogDebug)
+			make_shared<LogSinkCout>(LogPriority::critical, LogSink::Type::all),
+			make_shared<LogSinkSyslog>("test", LogPriority::debug, LogSink::Type::special)
+//			make_shared<LogSinkSyslog>("test")->set_type(LogSink::Type::all)
+//			make_shared<LogSinkCerr>(LogPriority::debug),
+//			make_shared<LogSinkAndroid>(LogPriority::debug)
 		}
 	);
 
 	LOG(LOG_EMERG) << "Log emerg\nSecond line\n";
-	LOG(LOG_EMERG) << "Log emerg 2";
+	LOG(LOG_EMERG) << TAG("hallo") << "Log emerg 2";
 	LOG(LOG_EMERG) << "Log Second line 2";
 	//LOG(LOG_ALERT) << "Log alert";
 	//LOG(LOG_CRIT) << "Log crit";
 	//LOG(LOG_ERR) << "Log err";
-	LOG(LOG_INFO) << "Log warning\n";
+	LOG(LOG_INFO) << TAG("my tag") << "Log warning\n";
 	LOG(LOG_NOTICE) << "Log notice\n";
 	LOG(LOG_INFO) << "Log info\n";
 	LOG(LOG_DEBUG) << "Log debug\n";

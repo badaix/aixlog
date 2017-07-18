@@ -34,51 +34,75 @@
 #endif
 
 
-#define LOG(P) std::clog << (LogPriority)P << kNoSyslog
-#define SLOG(P) std::clog << (LogPriority)P << kSyslog
-#define LOGD LOG(kLogDebug)
-#define LOGI LOG(kLogInfo)
-#define LOGN LOG(kLogNotice)
-#define LOGW LOG(kLogWarning)
-#define LOGE LOG(kLogErr)
-#define LOGC LOG(kLogCrit)
-#define LOGA LOG(kLogAlert)
+#define LOG(P) std::clog << (LogPriority)P << LogType::normal
+#define SLOG(P) std::clog << (LogPriority)P << LogType::special
+#define LOGD LOG(LogPriority::debug)
+#define LOGI LOG(LogPriority::info)
+#define LOGN LOG(LogPriority::notice)
+#define LOGW LOG(LogPriority::warning)
+#define LOGE LOG(LogPriority::error)
+#define LOGC LOG(LogPriority::critical)
+#define LOGA LOG(LogPriority::alert)
 
 
-enum SysLog
+enum class LogType
 {
-	kNoSyslog = 0,
-	kSyslog = 1
+	normal,
+	special
 };
 
 
-enum LogPriority
+enum class LogPriority : std::int8_t
 {
-	kLogEmerg   = LOG_EMERG,   // 0 system is unusable
-	kLogAlert   = LOG_ALERT,   // 1 action must be taken immediately
-	kLogCrit    = LOG_CRIT,    // 2 critical conditions
-	kLogErr     = LOG_ERR,     // 3 error conditions
-	kLogWarning = LOG_WARNING, // 4 warning conditions
-	kLogNotice  = LOG_NOTICE,  // 5 normal, but significant, condition
-	kLogInfo    = LOG_INFO,    // 6 informational message
-	kLogDebug   = LOG_DEBUG    // 7 debug-level message
+	emerg   = LOG_EMERG,   // 0 system is unusable
+	alert   = LOG_ALERT,   // 1 action must be taken immediately
+	critical= LOG_CRIT,    // 2 critical conditions
+	error   = LOG_ERR,     // 3 error conditions
+	warning = LOG_WARNING, // 4 warning conditions
+	notice  = LOG_NOTICE,  // 5 normal, but significant, condition
+	info    = LOG_INFO,    // 6 informational message
+	debug   = LOG_DEBUG    // 7 debug-level message
 };
 
 
-std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
-std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog);
+
+struct TAG
+{
+	TAG(std::nullptr_t) : tag(""), is_null(true)
+	{
+	}
+
+	TAG() : TAG(nullptr)
+	{
+	}
+
+	TAG(const std::string& tag) : tag(tag), is_null(false)
+	{
+	}
+
+	virtual explicit operator bool() const
+	{
+		return !is_null;
+	}
+
+	std::string tag;
+
+private:
+	bool is_null;
+};
+
 
 
 struct LogSink
 {
-	enum LogSinkType
+	enum class Type
 	{
-		kTypeLog = 0,
-		kTypeSysLog = 1,
-		kTypeAllLog = 2
+		normal,
+		special,
+		all
 	};
 
-	LogSink(LogPriority priority = kLogDebug) : priority(priority), sink_type_(kTypeAllLog)
+	LogSink(LogPriority priority, Type type) : priority(priority), sink_type_(type)
 	{
 	}
 
@@ -86,16 +110,29 @@ struct LogSink
 	{
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const = 0;
-	virtual LogSinkType get_type() const
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const = 0;
+	virtual Type get_type() const
 	{
 		return sink_type_;
 	}
 
+	virtual LogSink& set_type(Type sink_type)
+	{
+		sink_type_ = sink_type;
+		return *this;
+	}
+
 	LogPriority priority;
-	LogSinkType sink_type_;
+
+protected:
+	Type sink_type_;
 };
 
+
+
+std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
+std::ostream& operator<< (std::ostream& os, const LogType& log_type);
+std::ostream& operator<< (std::ostream& os, const TAG& tag);
 
 typedef std::shared_ptr<LogSink> log_sink_ptr;
 
@@ -132,21 +169,21 @@ public:
 	{
 		switch (logPriority)
 		{
-			case kLogEmerg:
+			case LogPriority::emerg:
 				return "Emerg";
-			case kLogAlert:
+			case LogPriority::alert:
 				return "Alert";
-			case kLogCrit:
+			case LogPriority::critical:
 				return "Crit";
-			case kLogErr:
+			case LogPriority::error:
 				return "Err";
-			case kLogWarning:
+			case LogPriority::warning:
 				return "Warn";
-			case kLogNotice:
+			case LogPriority::notice:
 				return "Notice";
-			case kLogInfo:
+			case LogPriority::info:
 				return "Info";
-			case kLogDebug:
+			case LogPriority::debug:
 				return "Debug";
 			default:
 				std::stringstream ss;
@@ -157,7 +194,7 @@ public:
 
 
 protected:
-	Log() :	syslog_(kNoSyslog)
+	Log() :	type_(LogType::normal)
 	{
 	}
 
@@ -169,17 +206,18 @@ protected:
 			for (const auto sink: logSinks)
 			{
 				if (
-						(sink->get_type() == LogSink::kTypeAllLog) ||
-						((syslog_ == kSyslog) && (sink->get_type() == LogSink::kTypeSysLog)) ||
-						((syslog_ == kNoSyslog) && (sink->get_type() == LogSink::kTypeLog))
+						(sink->get_type() == LogSink::Type::all) ||
+						((type_ == LogType::special) && (sink->get_type() == LogSink::Type::special)) ||
+						((type_ == LogType::normal) && (sink->get_type() == LogSink::Type::normal))
 				)
 					if (priority_ <= sink->priority)
-						sink->log(now, priority_, buffer_.str());
+						sink->log(now, priority_, tag_, buffer_.str());
 			}
 			buffer_.str("");
 			buffer_.clear();
-			//priority_ = kLogDebug; // default to debug for each message
-			//syslog_ = kNoSyslog;
+			//priority_ = debug; // default to debug for each message
+			//type_ = kNormal;
+			tag_ = nullptr;
 		}
 		return 0;
 	}
@@ -188,7 +226,7 @@ protected:
 	{
 /*		if (
 				(priority_ > loglevel_) && 
-				((syslog_ == kNoSyslog) || !syslog_enabled_) // || (syslogpriority_ > loglevel_))
+				((type_ == kNormal) || !syslog_enabled_) // || (syslogpriority_ > loglevel_))
 		)
 			return c;
 */		if (c != EOF)
@@ -209,23 +247,25 @@ protected:
 
 private:
 	friend std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
-	friend std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog);
+	friend std::ostream& operator<< (std::ostream& os, const LogType& log_type);
+	friend std::ostream& operator<< (std::ostream& os, const TAG& tag);
 
 	std::stringstream buffer_;
 	LogPriority priority_;
-	SysLog syslog_;
+	LogType type_;
+	TAG tag_;
 	std::vector<log_sink_ptr> logSinks;
 };
 
 
 
-
 struct LogSinkFormat : public LogSink
 {
-	LogSinkFormat(LogPriority priority, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] #logline") : 
-		LogSink(priority), 
+	LogSinkFormat(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag) #logline") : 
+		LogSink(priority, type), 
 		format_(format)
 	{
+		sink_type_ = Type::all;
 	}
 
 	virtual void set_format(const std::string& format)
@@ -233,17 +273,13 @@ struct LogSinkFormat : public LogSink
 		format_ = format;
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const = 0;
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const = 0;
 
-	virtual LogSinkType get_type() const
-	{
-		return kTypeAllLog;
-	}
 
 protected:
 	
 	/// strftime format + proprietary "#ms" for milliseconds
-	virtual void do_log(std::ostream& stream, const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	virtual void do_log(std::ostream& stream, const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
 	{
 		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
 		struct::tm now_tm = *std::localtime(&now_c);
@@ -265,6 +301,11 @@ protected:
 		if (pos != std::string::npos)
 			result.replace(pos, 5, Log::toString(priority));
 
+
+		pos = result.find("#tag");
+		if (pos != std::string::npos)
+			result.replace(pos, 4, tag?tag.tag:"log");
+
 		pos = result.find("#logline");
 		if (pos != std::string::npos)
 			result.replace(pos, 8, message);
@@ -279,15 +320,15 @@ protected:
 
 struct LogSinkCout : public LogSinkFormat
 {
-	LogSinkCout(LogPriority priority, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] #logline") :
-		LogSinkFormat(priority, format)
+	LogSinkCout(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline") :
+		LogSinkFormat(priority, type, format)
 	{
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
 	{
 		if (priority <= this->priority)
-			do_log(std::cout, timestamp, priority, message);
+			do_log(std::cout, timestamp, priority, tag, message);
 	}
 };
 
@@ -295,15 +336,15 @@ struct LogSinkCout : public LogSinkFormat
 
 struct LogSinkCerr : public LogSinkFormat
 {
-	LogSinkCerr(LogPriority priority, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] #logline") :
-		LogSinkFormat(priority, format)
+	LogSinkCerr(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline") :
+		LogSinkFormat(priority, type, format)
 	{
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
 	{
 		if (priority <= this->priority)
-			do_log(std::cerr, timestamp, priority, message);
+			do_log(std::cerr, timestamp, priority, tag, message);
 	}
 };
 
@@ -311,8 +352,9 @@ struct LogSinkCerr : public LogSinkFormat
 
 struct LogSinkSyslog : public LogSink
 {
-	LogSinkSyslog(const char* ident) : LogSink(kLogDebug)
+	LogSinkSyslog(const char* ident, LogPriority priority, Type type) : LogSink(priority, type)
 	{
+		sink_type_ = Type::special;
 		openlog(ident, LOG_PID, LOG_USER);
 	}
 
@@ -321,14 +363,9 @@ struct LogSinkSyslog : public LogSink
 		closelog();
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
 	{
 		syslog((int)priority, "%s", message.c_str());
-	}
-
-	virtual LogSinkType get_type() const
-	{
-		return kTypeSysLog;
 	}
 };
 
@@ -336,8 +373,9 @@ struct LogSinkSyslog : public LogSink
 
 struct LogSinkAndroid : public LogSink
 {
-	LogSinkAndroid(LogPriority priority, const std::string& default_tag = "") : LogSink(priority), default_tag_(default_tag)
+	LogSinkAndroid(LogPriority priority, Type type = Type::all, const std::string& default_tag = "") : LogSink(priority, type), default_tag_(default_tag)
 	{
+		sink_type_ = Type::all;
 	}
 
 #ifdef ANDROID
@@ -345,19 +383,19 @@ struct LogSinkAndroid : public LogSink
 	{
 		switch (priority)
 		{
-			case kLogEmerg:
-			case kLogAlert:
-			case kLogCrit:
+			case emerg:
+			case alert:
+			case critical:
 				return ANDROID_LOG_FATAL;
-			case kLogErr:
+			case error:
 				return ANDROID_LOG_ERROR;
-			case kLogWarning:
+			case warning:
 				return ANDROID_LOG_WARN;
-			case kLogNotice:
+			case notice:
 				return ANDROID_LOG_DEFAULT;
-			case kLogInfo:
+			case info:
 				return ANDROID_LOG_INFO;
-			case kLogDebug:
+			case debug:
 				return ANDROID_LOG_DEBUG;
 			default: 
 				return ANDROID_LOG_UNKNOWN;
@@ -365,22 +403,16 @@ struct LogSinkAndroid : public LogSink
 	}
 #endif
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const std::string& message) const
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
 	{
 #ifdef ANDROID
-		__android_log_write(get_android_prio(priority), default_tag_.c_str(), message.c_str());
+		__android_log_write(get_android_prio(priority), tag?tag.tag.c_str():default_tag_.c_str(), message.c_str());
 #endif
-	}
-
-	virtual LogSinkType get_type() const
-	{
-		return kTypeAllLog;
 	}
 
 protected:
 	std::string default_tag_;
 };
-
 
 
 
@@ -397,9 +429,17 @@ std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
 
 
 
-std::ostream& operator<< (std::ostream& os, const SysLog& log_syslog)
+std::ostream& operator<< (std::ostream& os, const LogType& log_type)
 {
-	static_cast<Log*>(os.rdbuf())->syslog_ = log_syslog;
+	static_cast<Log*>(os.rdbuf())->type_ = log_type;
+	return os;
+}
+
+
+
+std::ostream& operator<< (std::ostream& os, const TAG& tag)
+{
+	static_cast<Log*>(os.rdbuf())->tag_ = tag;
 	return os;
 }
 
