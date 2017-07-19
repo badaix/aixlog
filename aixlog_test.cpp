@@ -32,8 +32,15 @@ int main(int argc, char** argv)
 {
 	Log::init(
 		{
-			make_shared<LogSinkCout>(LogPriority::critical, LogSink::Type::all),
-			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::all, ""),
+			make_shared<LogSinkCallback>(LogPriority::debug, LogSink::Type::all, 
+				[](const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message)
+				{
+					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tprio: " << Log::toString(priority) << " (" << (int)priority << ")\n";
+				}
+			),
+			//make_shared<LogSinkCout>(LogPriority::critical, LogSink::Type::all),
+			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::all, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
+			make_shared<LogSinkCerr>(LogPriority::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
 			make_shared<LogSinkSyslog>("test", LogPriority::debug, LogSink::Type::special)
 //			make_shared<LogSinkSyslog>("test")->set_type(LogSink::Type::all)
 //			make_shared<LogSinkCerr>(LogPriority::debug),
@@ -41,6 +48,10 @@ int main(int argc, char** argv)
 		}
 	);
 
+	LOG(LOG_INFO, "guten tag") << "test with tag\n";
+	LOG(LOG_INFO) << "test without tag\n";
+	LOGI << TAG("guten tag") << "test with explicit tag\n";
+	LOGI << "test without explicit tag\n";
 
 	LOG(LOG_EMERG) << "Log emerg\nSecond line\n";
 	LOG(LOG_EMERG) << TAG("hallo") << "Log emerg 2";

@@ -36,13 +36,24 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <functional>
 #ifdef ANDROID
 #include <android/log.h>
 #endif
 
 
-#define LOG(P) std::clog << (LogPriority)P << LogType::normal
-#define SLOG(P) std::clog << (LogPriority)P << LogType::special
+#define LOG_WO_TAG(P) std::clog << (LogPriority)P << TAG(__FUNCTION__) << LogType::normal
+#define SLOG_WO_TAG(P) std::clog << (LogPriority)P << TAG(__FUNCTION__) << LogType::special
+
+#define LOG_TAG(P, T) std::clog << (LogPriority)P << TAG(T) << LogType::normal
+#define SLOG_TAG(P, T) std::clog << (LogPriority)P << TAG(T) << LogType::special
+
+#define LOG_X(x,P,T,FUNC, ...)  FUNC
+#define LOG(...) LOG_X(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
+
+#define SLOG_X(x,P,T,FUNC, ...)  FUNC
+#define SLOG(...) SLOG_X(,##__VA_ARGS__, SLOG_TAG(__VA_ARGS__), SLOG_WO_TAG(__VA_ARGS__))
+
 #define LOGD LOG(LogPriority::debug)
 #define LOGI LOG(LogPriority::info)
 #define LOGN LOG(LogPriority::notice)
@@ -321,7 +332,7 @@ protected:
 		}
 		else
 		{
-			if (result.empty())
+			if (result.empty() || (result.back() == ' '))
 				stream << message << std::endl;
 			else
 				stream << result << " " << message << std::endl;
@@ -425,6 +436,27 @@ struct LogSinkAndroid : public LogSink
 
 protected:
 	std::string default_tag_;
+};
+
+
+
+
+struct LogSinkCallback : public LogSink
+{
+	typedef std::function<void(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message)> callback_fun;
+
+	LogSinkCallback(LogPriority priority, Type type, callback_fun callback) : LogSink(priority, type), callback(callback)
+	{
+	}
+
+	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
+	{
+		if (callback && (priority <= this->priority))
+			callback(timestamp, priority, tag, message);
+	}
+
+private:
+	callback_fun callback;
 };
 
 
