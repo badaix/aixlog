@@ -39,7 +39,7 @@
 #ifdef ANDROID
 #include <android/log.h>
 #endif
-#ifdef WINDOWS
+#ifdef _WIN32
 #include <Windows.h>
 #else
 #include <syslog.h>
@@ -47,8 +47,8 @@
 
 
 /// Internal helper defines
-#define LOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__FUNCTION__) << LogType::normal
-#define SLOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__FUNCTION__) << LogType::special
+#define LOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__func__) << LogType::normal
+#define SLOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__func__) << LogType::special
 
 #define LOG_TAG(P, T) std::clog << (LogPriority)P << Tag(T) << LogType::normal
 #define SLOG_TAG(P, T) std::clog << (LogPriority)P << Tag(T) << LogType::special
@@ -392,7 +392,7 @@ struct LogSinkOutputDebugString : LogSink
 
 	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
-#ifdef WINDOWS
+#ifdef _WIN32
 		OutputDebugString(message.c_str());
 #endif
 	}
@@ -404,7 +404,7 @@ struct LogSinkSyslog : public LogSink
 {
 	LogSinkSyslog(const char* ident, LogPriority priority, Type type) : LogSink(priority, type)
 	{
-#ifndef WINDOWS
+#ifndef _WIN32
 		openlog(ident, LOG_PID, LOG_USER);
 #endif
 	}
@@ -416,7 +416,7 @@ struct LogSinkSyslog : public LogSink
 
 	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
-#ifndef WINDOWS
+#ifndef _WIN32
 		syslog((int)priority, "%s", message.c_str());
 #endif
 	}

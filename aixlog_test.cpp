@@ -27,6 +27,20 @@
 using namespace std;
 
 
+class Test
+{
+public:
+	Test()
+	{
+	}
+
+	void do_something(const std::string& some_string)
+	{
+		LOGI << "LOGI: " << some_string << "\n";
+	}
+};
+
+
 
 int main(int argc, char** argv)
 {
@@ -80,5 +94,8 @@ int main(int argc, char** argv)
 	LOGD << "LOGD\n";
 	LOGI << "LOGI\n";
 	LOGE << "LOGE\n";
+
+	Test test;
+	test.do_something("doing something...");
 }
 
