@@ -30,12 +30,13 @@
 #define AIX_LOG_HPP
 
 #include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <functional>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <vector>
-#include <memory>
-#include <chrono>
-#include <functional>
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -319,10 +320,9 @@ protected:
 		if (pos != std::string::npos)
 		{
 			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(timestamp).time_since_epoch().count() % 1000;
-			std::string ms = std::to_string(ms_part);
-			while (ms.size() < 3)
-				ms = '0' + ms;
-			result.replace(pos, 3, ms);
+			char ms_str[3];
+			sprintf(ms_str, "%03d", ms_part);
+			result.replace(pos, 3, ms_str);
 		}
 
 		pos = result.find("#prio");
@@ -478,19 +478,19 @@ struct LogSinkAndroid : public LogSink
 	{
 		switch (priority)
 		{
-			case emerg:
-			case alert:
-			case critical:
+			case LogPriority::emerg:
+			case LogPriority::alert:
+			case LogPriority::critical:
 				return ANDROID_LOG_FATAL;
-			case error:
+			case LogPriority::error:
 				return ANDROID_LOG_ERROR;
-			case warning:
+			case LogPriority::warning:
 				return ANDROID_LOG_WARN;
-			case notice:
+			case LogPriority::notice:
 				return ANDROID_LOG_DEFAULT;
-			case info:
+			case LogPriority::info:
 				return ANDROID_LOG_INFO;
-			case debug:
+			case LogPriority::debug:
 				return ANDROID_LOG_DEBUG;
 			default: 
 				return ANDROID_LOG_UNKNOWN;
