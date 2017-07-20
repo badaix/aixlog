@@ -40,6 +40,7 @@ int main(int argc, char** argv)
 			),
 			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			make_shared<LogSinkCerr>(LogPriority::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
+			make_shared<LogSinkOutputDebugString>(LogPriority::debug, LogSink::Type::all),
 			make_shared<LogSinkSyslog>("test", LogPriority::debug, LogSink::Type::special)
 		}
 	);
@@ -63,7 +64,10 @@ int main(int argc, char** argv)
 	cerr << "cerr\n";
 
 	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG)\nSLOG(LOG_EMERG) Second line\n";
-	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG) 2";
+	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG) 1, ";
+	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG) 2\n";
+	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG) 1, "
+					<< "SLOG(LOG_EMERG) 2\n";
 	SLOG(LOG_ALERT) << "SLOG(LOG_ALERT)\n";
 	SLOG(LOG_CRIT) << "SLOG(LOG_CRIT)\n";
 	SLOG(LOG_ERR) << "SLOG(LOG_ERR)\n";

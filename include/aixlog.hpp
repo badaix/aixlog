@@ -3,7 +3,7 @@
 	 / _\ (  )( \/ )(  )   /  \  / __)
 	/    \ )(  )  ( / (_/\(  O )( (_ \
 	\_/\_/(__)(_/\_)\____/ \__/  \___/
-	version 0.1.0
+	version 0.2.0
 	https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -29,7 +29,6 @@
 #ifndef AIX_LOG_HPP
 #define AIX_LOG_HPP
 
-#include <syslog.h>
 #include <algorithm>
 #include <iostream>
 #include <sstream>
@@ -39,6 +38,11 @@
 #include <functional>
 #ifdef ANDROID
 #include <android/log.h>
+#endif
+#ifdef WINDOWS
+#include <Windows.h>
+#else
+#include <syslog.h>
 #endif
 
 
@@ -379,11 +383,30 @@ struct LogSinkCerr : public LogSinkFormat
 
 
 
+/// Not tested due to unavailability of Windows
+struct LogSinkOutputDebugString : LogSink
+{
+	LogSinkOutputDebugString(LogPriority priority, Type type = Type::all, const std::string& default_tag = "") : LogSink(priority, type)
+	{
+	}
+
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	{
+#ifdef WINDOWS
+		OutputDebugString(message.c_str());
+#endif
+	}
+};
+
+
+
 struct LogSinkSyslog : public LogSink
 {
 	LogSinkSyslog(const char* ident, LogPriority priority, Type type) : LogSink(priority, type)
 	{
+#ifndef WINDOWS
 		openlog(ident, LOG_PID, LOG_USER);
+#endif
 	}
 
 	virtual ~LogSinkSyslog()
@@ -393,7 +416,9 @@ struct LogSinkSyslog : public LogSink
 
 	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
+#ifndef WINDOWS
 		syslog((int)priority, "%s", message.c_str());
+#endif
 	}
 };
 
