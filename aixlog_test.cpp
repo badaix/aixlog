@@ -55,6 +55,7 @@ int main(int argc, char** argv)
 			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			make_shared<LogSinkCerr>(LogPriority::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
 			make_shared<LogSinkOutputDebugString>(LogPriority::debug, LogSink::Type::all),
+			make_shared<LogSinkUnifiedLogging>(LogPriority::debug, LogSink::Type::all),
 			make_shared<LogSinkSyslog>("test", LogPriority::debug, LogSink::Type::special)
 		}
 	);

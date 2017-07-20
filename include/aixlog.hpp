@@ -3,7 +3,7 @@
 	 / _\ (  )( \/ )(  )   /  \  / __)
 	/    \ )(  )  ( / (_/\(  O )( (_ \
 	\_/\_/(__)(_/\_)\____/ \__/  \___/
-	version 0.2.0
+	version 0.3.0
 	https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -36,8 +36,11 @@
 #include <memory>
 #include <chrono>
 #include <functional>
-#ifdef ANDROID
+#ifdef __ANDROID__
 #include <android/log.h>
+#endif
+#ifdef __APPLE__
+#include <os/log.h>
 #endif
 #ifdef _WIN32
 #include <Windows.h>
@@ -394,6 +397,46 @@ struct LogSinkOutputDebugString : LogSink
 	{
 #ifdef _WIN32
 		OutputDebugString(message.c_str());
+#endif
+	}
+};
+
+
+
+struct LogSinkUnifiedLogging : LogSink
+{
+	LogSinkUnifiedLogging(LogPriority priority, Type type = Type::all, const std::string& default_tag = "") : LogSink(priority, type)
+	{
+	}
+
+#ifdef __APPLE__
+	os_log_type_t get_os_log_type(LogPriority priority) const
+	{
+		switch (priority)
+		{
+			case LogPriority::emerg:
+			case LogPriority::alert:
+			case LogPriority::critical:
+				return OS_LOG_TYPE_FAULT;
+			case LogPriority::error:
+				return OS_LOG_TYPE_ERROR;
+			case LogPriority::warning:
+			case LogPriority::notice:
+				return OS_LOG_TYPE_DEFAULT;
+			case LogPriority::info:
+				return OS_LOG_TYPE_INFO;
+			case LogPriority::debug:
+				return OS_LOG_TYPE_DEBUG;
+			default: 
+				return OS_LOG_TYPE_DEFAULT;
+		}
+	}
+#endif
+
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	{
+#ifdef __APPLE__
+		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(priority), "%{public}s", message.c_str());
 #endif
 	}
 };
