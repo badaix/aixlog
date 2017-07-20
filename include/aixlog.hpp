@@ -1,10 +1,10 @@
 /***
-	  __   __  _  _  __     __    ___ 
-	 / _\ (  )( \/ )(  )   /  \  / __)
-	/    \ )(  )  ( / (_/\(  O )( (_ \
-	\_/\_/(__)(_/\_)\____/ \__/  \___/
-	version 0.3.0
-	https://github.com/badaix/aixlog
+      __   __  _  _  __     __    ___ 
+     / _\ (  )( \/ )(  )   /  \  / __)
+    /    \ )(  )  ( / (_/\(  O )( (_ \
+    \_/\_/(__)(_/\_)\____/ \__/  \___/
+    version 0.3.0
+    https://github.com/badaix/aixlog
 
     This file is part of aixlog
     Copyright (C) 2017  Johannes Pohl
