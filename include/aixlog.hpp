@@ -42,16 +42,19 @@
 #endif
 
 
-#define LOG_WO_TAG(P) std::clog << (LogPriority)P << TAG(__FUNCTION__) << LogType::normal
-#define SLOG_WO_TAG(P) std::clog << (LogPriority)P << TAG(__FUNCTION__) << LogType::special
+/// Internal helper defines
+#define LOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__FUNCTION__) << LogType::normal
+#define SLOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__FUNCTION__) << LogType::special
 
-#define LOG_TAG(P, T) std::clog << (LogPriority)P << TAG(T) << LogType::normal
-#define SLOG_TAG(P, T) std::clog << (LogPriority)P << TAG(T) << LogType::special
+#define LOG_TAG(P, T) std::clog << (LogPriority)P << Tag(T) << LogType::normal
+#define SLOG_TAG(P, T) std::clog << (LogPriority)P << Tag(T) << LogType::special
 
 #define LOG_X(x,P,T,FUNC, ...)  FUNC
-#define LOG(...) LOG_X(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
-
 #define SLOG_X(x,P,T,FUNC, ...)  FUNC
+
+
+/// External logger defines
+#define LOG(...) LOG_X(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
 #define SLOG(...) SLOG_X(,##__VA_ARGS__, SLOG_TAG(__VA_ARGS__), SLOG_WO_TAG(__VA_ARGS__))
 
 #define LOGD LOG(LogPriority::debug)
@@ -62,6 +65,7 @@
 #define LOGC LOG(LogPriority::critical)
 #define LOGA LOG(LogPriority::alert)
 
+#define TAG Tag
 
 enum class LogType
 {
@@ -84,17 +88,17 @@ enum class LogPriority : std::int8_t
 
 
 
-struct TAG
+struct Tag
 {
-	TAG(std::nullptr_t) : tag(""), is_null(true)
+	Tag(std::nullptr_t) : tag(""), is_null(true)
 	{
 	}
 
-	TAG() : TAG(nullptr)
+	Tag() : Tag(nullptr)
 	{
 	}
 
-	TAG(const std::string& tag) : tag(tag), is_null(false)
+	Tag(const std::string& tag) : tag(tag), is_null(false)
 	{
 	}
 
@@ -110,6 +114,7 @@ private:
 };
 
 
+typedef std::chrono::time_point<std::chrono::system_clock> time_point_sys_clock;
 
 struct LogSink
 {
@@ -128,7 +133,7 @@ struct LogSink
 	{
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const = 0;
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const = 0;
 	virtual Type get_type() const
 	{
 		return sink_type_;
@@ -150,7 +155,7 @@ protected:
 
 std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
 std::ostream& operator<< (std::ostream& os, const LogType& log_type);
-std::ostream& operator<< (std::ostream& os, const TAG& tag);
+std::ostream& operator<< (std::ostream& os, const Tag& tag);
 
 typedef std::shared_ptr<LogSink> log_sink_ptr;
 
@@ -229,7 +234,7 @@ protected:
 						((type_ == LogType::normal) && (sink->get_type() == LogSink::Type::normal))
 				)
 					if (priority_ <= sink->priority)
-						sink->log(now, priority_, tag_, buffer_.str());
+						sink->log(now, priority_, type_, tag_, buffer_.str());
 			}
 			buffer_.str("");
 			buffer_.clear();
@@ -266,15 +271,14 @@ protected:
 private:
 	friend std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
 	friend std::ostream& operator<< (std::ostream& os, const LogType& log_type);
-	friend std::ostream& operator<< (std::ostream& os, const TAG& tag);
+	friend std::ostream& operator<< (std::ostream& os, const Tag& tag);
 
 	std::stringstream buffer_;
 	LogPriority priority_;
 	LogType type_;
-	TAG tag_;
+	Tag tag_;
 	std::vector<log_sink_ptr> logSinks;
 };
-
 
 
 struct LogSinkFormat : public LogSink
@@ -283,7 +287,6 @@ struct LogSinkFormat : public LogSink
 		LogSink(priority, type), 
 		format_(format)
 	{
-		sink_type_ = Type::all;
 	}
 
 	virtual void set_format(const std::string& format)
@@ -291,13 +294,13 @@ struct LogSinkFormat : public LogSink
 		format_ = format;
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const = 0;
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const = 0;
 
 
 protected:
 	
 	/// strftime format + proprietary "#ms" for milliseconds
-	virtual void do_log(std::ostream& stream, const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
+	virtual void do_log(std::ostream& stream, const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
 		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
 		struct::tm now_tm = *std::localtime(&now_c);
@@ -351,10 +354,10 @@ struct LogSinkCout : public LogSinkFormat
 	{
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
 		if (priority <= this->priority)
-			do_log(std::cout, timestamp, priority, tag, message);
+			do_log(std::cout, timestamp, priority, type, tag, message);
 	}
 };
 
@@ -367,10 +370,10 @@ struct LogSinkCerr : public LogSinkFormat
 	{
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
 		if (priority <= this->priority)
-			do_log(std::cerr, timestamp, priority, tag, message);
+			do_log(std::cerr, timestamp, priority, type, tag, message);
 	}
 };
 
@@ -388,7 +391,7 @@ struct LogSinkSyslog : public LogSink
 		closelog();
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
 		syslog((int)priority, "%s", message.c_str());
 	}
@@ -427,7 +430,7 @@ struct LogSinkAndroid : public LogSink
 	}
 #endif
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
 #ifdef ANDROID
 		__android_log_write(get_android_prio(priority), tag?tag.tag.c_str():default_tag_.c_str(), message.c_str());
@@ -443,16 +446,16 @@ protected:
 
 struct LogSinkCallback : public LogSink
 {
-	typedef std::function<void(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message)> callback_fun;
+	typedef std::function<void(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message)> callback_fun;
 
 	LogSinkCallback(LogPriority priority, Type type, callback_fun callback) : LogSink(priority, type), callback(callback)
 	{
 	}
 
-	virtual void log(const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
 		if (callback && (priority <= this->priority))
-			callback(timestamp, priority, tag, message);
+			callback(timestamp, priority, type, tag, message);
 	}
 
 private:
@@ -484,7 +487,7 @@ std::ostream& operator<< (std::ostream& os, const LogType& log_type)
 
 
 
-std::ostream& operator<< (std::ostream& os, const TAG& tag)
+std::ostream& operator<< (std::ostream& os, const Tag& tag)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)

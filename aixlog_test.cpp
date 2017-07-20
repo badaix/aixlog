@@ -33,53 +33,48 @@ int main(int argc, char** argv)
 	Log::init(
 		{
 			make_shared<LogSinkCallback>(LogPriority::debug, LogSink::Type::all, 
-				[](const std::chrono::time_point<std::chrono::system_clock>& timestamp, LogPriority priority, const TAG& tag, const std::string& message)
+				[](const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message)
 				{
-					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tprio: " << Log::toString(priority) << " (" << (int)priority << ")\n";
+					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tprio: " << Log::toString(priority) << " (" << (int)priority << ")\n\ttype: " << (type == LogType::normal?"normal":"special") << "\n";
 				}
 			),
-			//make_shared<LogSinkCout>(LogPriority::critical, LogSink::Type::all),
-			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::all, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
+			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			make_shared<LogSinkCerr>(LogPriority::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
 			make_shared<LogSinkSyslog>("test", LogPriority::debug, LogSink::Type::special)
-//			make_shared<LogSinkSyslog>("test")->set_type(LogSink::Type::all)
-//			make_shared<LogSinkCerr>(LogPriority::debug),
-//			make_shared<LogSinkAndroid>(LogPriority::debug)
 		}
 	);
 
-	LOG(LOG_INFO, "guten tag") << "test with tag\n";
-	LOG(LOG_INFO) << "test without tag\n";
-	LOGI << TAG("guten tag") << "test with explicit tag\n";
-	LOGI << "test without explicit tag\n";
+	LOG(LOG_INFO, "guten tag") << "LOG(LOG_INFO, \"guten tag\")\n";
+	LOG(LOG_INFO) << "LOG(LOG_INFO)\n";
+	LOGI << TAG("guten tag") << "LOGI << TAG(\"guten tag\")\n";
+	LOGI << "LOGI\n";
 
-	LOG(LOG_EMERG) << "Log emerg\nSecond line\n";
-	LOG(LOG_EMERG) << TAG("hallo") << "Log emerg 2";
-	LOG(LOG_EMERG) << "Log Second line 2";
-	//LOG(LOG_ALERT) << "Log alert";
-	//LOG(LOG_CRIT) << "Log crit";
-	//LOG(LOG_ERR) << "Log err";
-	LOG(LOG_INFO) << TAG("my tag") << "Log warning\n";
-	LOG(LOG_NOTICE) << "Log notice\n";
-	LOG(LOG_INFO) << "Log info\n";
-	LOG(LOG_DEBUG) << "Log debug\n";
+	LOG(LOG_EMERG) << "LOG(LOG_EMERG)\nLOG(LOG_EMERG) Second line\n";
+	LOG(LOG_EMERG) << TAG("hello") << "LOG(LOG_EMERG) << TAG(\"hello\") no line break";
+	LOG(LOG_EMERG) << "LOG(LOG_EMERG) 2 no line break";
+	LOG(LOG_ALERT) << "LOG(LOG_ALERT): change in loglevel will add a line break";
+	LOG(LOG_CRIT) << "LOG(LOG_CRIT)";
+	LOG(LOG_ERR) << "LOG(LOG_ERR)";
+	LOG(LOG_INFO) << TAG("my tag") << "LOG(LOG_INFO) << TAG(\"my tag\")n";
+	LOG(LOG_NOTICE) << "LOG(LOG_NOTICE)\n";
+	LOG(LOG_INFO) << "LOG(LOG_INFO)\n";
+	LOG(LOG_DEBUG) << "LOG(LOG_DEBUG)\n";
 	cout << "cout\n";
 	cerr << "cerr\n";
 
-	SLOG(LOG_EMERG) << "SysLog emerg\nSecond line\n";
-	SLOG(LOG_EMERG) << "SysLog emerg 2";
-	SLOG(LOG_EMERG) << "SysLog Second line 2";
-	SLOG(LOG_ALERT) << "SysLog alert\n";
-	SLOG(LOG_CRIT) << "SysLog crit\n";
-	SLOG(LOG_ERR) << "SysLog err\n";
-	SLOG(LOG_WARNING) << "SysLog warning\n";
-	SLOG(LOG_NOTICE) << "SysLog notice\n";
-	SLOG(LOG_INFO) << "SysLog info\n";
-	SLOG(LOG_DEBUG) << "SysLog debug\n";
+	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG)\nSLOG(LOG_EMERG) Second line\n";
+	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG) 2";
+	SLOG(LOG_ALERT) << "SLOG(LOG_ALERT)\n";
+	SLOG(LOG_CRIT) << "SLOG(LOG_CRIT)\n";
+	SLOG(LOG_ERR) << "SLOG(LOG_ERR)\n";
+	SLOG(LOG_WARNING) << "SLOG(LOG_WARNING)\n";
+	SLOG(LOG_NOTICE) << "SLOG(LOG_NOTICE)\n";
+	SLOG(LOG_INFO) << "SLOG(LOG_INFO)\n";
+	SLOG(LOG_DEBUG) << "SLOG(LOG_DEBUG)\n";
 
-	LOG(LOG_ALERT) << "Log alert\n";
-	LOGD << "Debug\n";
-	LOGI << "Info\n";
-	LOGE << "Error\n";
+	LOG(LOG_ALERT) << "LOG(LOG_ALERT)\n";
+	LOGD << "LOGD\n";
+	LOGI << "LOGI\n";
+	LOGE << "LOGE\n";
 }
 
