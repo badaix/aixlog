@@ -93,6 +93,8 @@ int main(int argc, char** argv)
 
 	LOG(LOG_ALERT) << "LOG(LOG_ALERT)\n";
 	LOGD << "LOGD\n";
+	LOGD << COND(1 == 1) << "LOGD will be logged\n";
+	LOGD << COND(1 == 2) << "LOGD will not be logged\n";
 	LOGI << "LOGI\n";
 	LOGE << "LOGE\n";
 

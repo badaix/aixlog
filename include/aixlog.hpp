@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.3.0
+    version 0.4.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -25,6 +25,9 @@
 
 /// inspired by "eater": 
 /// https://stackoverflow.com/questions/2638654/redirect-c-stdclog-to-syslog-on-unix
+
+/// TODO: add global log level
+
 
 #ifndef AIX_LOG_HPP
 #define AIX_LOG_HPP
@@ -74,6 +77,8 @@
 #define LOGA LOG(LogPriority::alert)
 
 #define TAG Tag
+#define COND Conditional
+
 
 enum class LogType
 {
@@ -92,6 +97,32 @@ enum class LogPriority : std::int8_t
 	notice  = LOG_NOTICE,  // 5 normal, but significant, condition
 	info    = LOG_INFO,    // 6 informational message
 	debug   = LOG_DEBUG    // 7 debug-level message
+};
+
+
+
+struct Conditional
+{
+	Conditional() : Conditional(true)
+	{
+	}
+
+	Conditional(bool value) : is_true_(value)
+	{
+	}
+
+	void set(bool value)
+	{
+		is_true_ = value;
+	}
+
+	bool is_true() const
+	{
+		return is_true_;
+	}
+
+private:
+	bool is_true_;
 };
 
 
@@ -234,21 +265,25 @@ protected:
 		if (!buffer_.str().empty())
 		{
 			auto now = std::chrono::system_clock::now();
-			for (const auto sink: logSinks)
+			if (conditional_.is_true())
 			{
-				if (
-						(sink->get_type() == LogSink::Type::all) ||
-						((type_ == LogType::special) && (sink->get_type() == LogSink::Type::special)) ||
-						((type_ == LogType::normal) && (sink->get_type() == LogSink::Type::normal))
-				)
-					if (priority_ <= sink->priority)
-						sink->log(now, priority_, type_, tag_, buffer_.str());
+				for (const auto sink: logSinks)
+				{
+					if (
+							(sink->get_type() == LogSink::Type::all) ||
+							((type_ == LogType::special) && (sink->get_type() == LogSink::Type::special)) ||
+							((type_ == LogType::normal) && (sink->get_type() == LogSink::Type::normal))
+					)
+						if (priority_ <= sink->priority)
+							sink->log(now, priority_, type_, tag_, buffer_.str());
+				}
 			}
 			buffer_.str("");
 			buffer_.clear();
 			//priority_ = debug; // default to debug for each message
 			//type_ = kNormal;
 			tag_ = nullptr;
+			conditional_.set(true);
 		}
 		return 0;
 	}
@@ -280,13 +315,16 @@ private:
 	friend std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
 	friend std::ostream& operator<< (std::ostream& os, const LogType& log_type);
 	friend std::ostream& operator<< (std::ostream& os, const Tag& tag);
+	friend std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
 
 	std::stringstream buffer_;
 	LogPriority priority_;
 	LogType type_;
 	Tag tag_;
+	Conditional conditional_;
 	std::vector<log_sink_ptr> logSinks;
 };
+
 
 
 struct LogSinkFormat : public LogSink
@@ -306,7 +344,6 @@ struct LogSinkFormat : public LogSink
 
 
 protected:
-	
 	/// strftime format + proprietary "#ms" for milliseconds
 	virtual void do_log(std::ostream& stream, const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
@@ -473,7 +510,7 @@ struct LogSinkAndroid : public LogSink
 	{
 	}
 
-#ifdef ANDROID
+#ifdef __ANDROID__
 	android_LogPriority get_android_prio(LogPriority priority) const
 	{
 		switch (priority)
@@ -500,7 +537,7 @@ struct LogSinkAndroid : public LogSink
 
 	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
-#ifdef ANDROID
+#ifdef __ANDROID__
 		__android_log_write(get_android_prio(priority), tag?tag.tag.c_str():default_tag_.c_str(), message.c_str());
 #endif
 	}
@@ -508,7 +545,6 @@ struct LogSinkAndroid : public LogSink
 protected:
 	std::string default_tag_;
 };
-
 
 
 
@@ -560,6 +596,16 @@ std::ostream& operator<< (std::ostream& os, const Tag& tag)
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
 		log->tag_ = tag;
+	return os;
+}
+
+
+
+std::ostream& operator<< (std::ostream& os, const Conditional& conditional)
+{
+	Log* log = dynamic_cast<Log*>(os.rdbuf());
+	if (log)
+		log->conditional_.set(conditional.is_true());
 	return os;
 }
 
