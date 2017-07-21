@@ -222,9 +222,10 @@ protected:
 
 
 
-std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
-std::ostream& operator<< (std::ostream& os, const LogType& log_type);
-std::ostream& operator<< (std::ostream& os, const Tag& tag);
+static std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
+static std::ostream& operator<< (std::ostream& os, const LogType& log_type);
+static std::ostream& operator<< (std::ostream& os, const Tag& tag);
+static std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
 
 typedef std::shared_ptr<LogSink> log_sink_ptr;
 
@@ -387,7 +388,7 @@ protected:
 		if (pos != std::string::npos)
 		{
 			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(timestamp).time_since_epoch().count() % 1000;
-			char ms_str[3];
+			char ms_str[4];
 			sprintf(ms_str, "%03d", ms_part);
 			result.replace(pos, 3, ms_str);
 		}
@@ -598,7 +599,7 @@ private:
 
 
 
-std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
+static std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log && (log->priority_ != log_priority))
@@ -611,7 +612,7 @@ std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
 
 
 
-std::ostream& operator<< (std::ostream& os, const LogType& log_type)
+static std::ostream& operator<< (std::ostream& os, const LogType& log_type)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
@@ -621,7 +622,7 @@ std::ostream& operator<< (std::ostream& os, const LogType& log_type)
 
 
 
-std::ostream& operator<< (std::ostream& os, const Tag& tag)
+static std::ostream& operator<< (std::ostream& os, const Tag& tag)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
@@ -631,7 +632,7 @@ std::ostream& operator<< (std::ostream& os, const Tag& tag)
 
 
 
-std::ostream& operator<< (std::ostream& os, const Conditional& conditional)
+static std::ostream& operator<< (std::ostream& os, const Conditional& conditional)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
@@ -641,7 +642,7 @@ std::ostream& operator<< (std::ostream& os, const Conditional& conditional)
 
 
 
-std::ostream& operator<< (std::ostream& os, const Color& color)
+static std::ostream& operator<< (std::ostream& os, const Color& color)
 {
     os << "\033[";
     if ((color.foreground == LogColor::none) && (color.background == LogColor::none))
@@ -662,7 +663,7 @@ std::ostream& operator<< (std::ostream& os, const Color& color)
 
 
 
-std::ostream& operator<< (std::ostream& os, const LogColor& logColor)
+static std::ostream& operator<< (std::ostream& os, const LogColor& logColor)
 {
     os << Color(logColor);
 	return os;
