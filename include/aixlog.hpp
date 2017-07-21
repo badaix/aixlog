@@ -76,6 +76,14 @@
 #define LOGC LOG(LogPriority::critical)
 #define LOGA LOG(LogPriority::alert)
 
+#define SLOGD LOGD << LogType::special
+#define SLOGI LOGI << LogType::special
+#define SLOGN LOGN << LogType::special
+#define SLOGW LOGW << LogType::special
+#define SLOGE LOGE << LogType::special
+#define SLOGC LOGC << LogType::special
+#define SLOGA LOGA << LogType::special
+
 #define TAG Tag
 #define COND Conditional
 
