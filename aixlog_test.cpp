@@ -69,7 +69,6 @@ int main(int argc, char** argv)
 	LOG(LOG_EMERG) << TAG("hello") << "LOG(LOG_EMERG) << TAG(\"hello\") no line break";
 	LOG(LOG_EMERG) << "LOG(LOG_EMERG) 2 no line break";
 	LOG(LOG_ALERT) << "LOG(LOG_ALERT): change in loglevel will add a line break";
-	LOG(LOG_CRIT) << "LOG(LOG_CRIT)";
 	LOG(LOG_ERR) << "LOG(LOG_ERR)";
 	LOG(LOG_INFO) << TAG("my tag") << "LOG(LOG_INFO) << TAG(\"my tag\")n";
 	LOG(LOG_NOTICE) << "LOG(LOG_NOTICE)\n";
@@ -84,6 +83,8 @@ int main(int argc, char** argv)
 	SLOG(LOG_EMERG) << "SLOG(LOG_EMERG) 1, "
 					<< "SLOG(LOG_EMERG) 2\n";
 	SLOG(LOG_ALERT) << "SLOG(LOG_ALERT)\n";
+	LOG(LOG_ALERT) << LogType::special << "LOG(LOG_ALERT) << LogType::special\n";
+	LOG(LOG_ALERT) << LogType::normal << "LOG(LOG_ALERT) << LogType::normal\n";
 	SLOG(LOG_CRIT) << "SLOG(LOG_CRIT)\n";
 	SLOG(LOG_ERR) << "SLOG(LOG_ERR)\n";
 	SLOG(LOG_WARNING) << "SLOG(LOG_WARNING)\n";
@@ -97,6 +98,10 @@ int main(int argc, char** argv)
 	LOGD << COND(1 == 2) << "LOGD will not be logged\n";
 	LOGI << "LOGI\n";
 	LOGE << "LOGE\n";
+
+	/// Colors
+	LOG(LOG_CRIT) << "LOG(LOG_CRIT) " << LogColor::red << "red" << LogColor::none << " default color\n";
+	LOG(LOG_CRIT) << "LOG(LOG_CRIT) " << Color(LogColor::red, LogColor::blue) << "red on blue background" << LogColor::none << " default color\n";
 
 	Test test;
 	test.do_something("doing something...");

@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.4.0
+    version 0.5.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -87,6 +87,7 @@ enum class LogType
 };
 
 
+
 enum class LogPriority : std::int8_t
 {
 	emerg   = LOG_EMERG,   // 0 system is unusable
@@ -97,6 +98,35 @@ enum class LogPriority : std::int8_t
 	notice  = LOG_NOTICE,  // 5 normal, but significant, condition
 	info    = LOG_INFO,    // 6 informational message
 	debug   = LOG_DEBUG    // 7 debug-level message
+};
+
+
+
+enum class LogColor
+{
+    none = 0,
+    black = 1,
+	red = 2,
+	green = 3,
+	yellow = 4,
+	blue = 5,
+	magenta = 6,
+	cyan = 7,
+	white = 8
+};
+
+
+
+struct Color
+{
+	Color(LogColor foreground = LogColor::none, LogColor background = LogColor::none) :
+		foreground(foreground),
+		background(background)
+	{
+	}
+
+	LogColor foreground;
+	LogColor background;
 };
 
 
@@ -606,6 +636,35 @@ std::ostream& operator<< (std::ostream& os, const Conditional& conditional)
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
 		log->conditional_.set(conditional.is_true());
+	return os;
+}
+
+
+
+std::ostream& operator<< (std::ostream& os, const Color& color)
+{
+    os << "\033[";
+    if ((color.foreground == LogColor::none) && (color.background == LogColor::none))
+        os << "0"; // reset colors if no params
+
+    if (color.foreground != LogColor::none) 
+	{
+        os << 29 + (int)color.foreground;
+        if (color.background != LogColor::none) 
+			os << ";";
+    }
+    if (color.background != LogColor::none) 
+        os << 39 + (int)color.background;
+    os << "m";
+
+	return os;
+}
+
+
+
+std::ostream& operator<< (std::ostream& os, const LogColor& logColor)
+{
+    os << Color(logColor);
 	return os;
 }
 
