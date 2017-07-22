@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.5.0
+    version 0.6.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -481,7 +481,7 @@ struct LogSinkOutputDebugString : LogSink
 
 struct LogSinkUnifiedLogging : LogSink
 {
-	LogSinkUnifiedLogging(LogPriority priority, Type type = Type::all, const std::string& default_tag = "") : LogSink(priority, type)
+	LogSinkUnifiedLogging(LogPriority priority, Type type = Type::all) : LogSink(priority, type)
 	{
 	}
 
@@ -593,6 +593,37 @@ struct LogSinkAndroid : public LogSink
 	}
 
 protected:
+	std::string ident_;
+};
+
+
+
+struct LogSinkNative : public LogSink
+{
+	LogSinkNative(const std::string& ident, LogPriority priority, Type type = Type::all) : 
+		LogSink(priority, type), 
+		log_sink_(nullptr), 
+		ident_(ident)
+	{
+#ifdef __ANDROID__
+		log_sink_ = std::make_shared<LogSinkAndroid>(ident_, priority, type);
+#elif __APPLE__
+		log_sink_ = std::make_shared<LogSinkUnifiedLogging>(priority, type);
+#elif _WIN32
+		log_sink_ = std::make_shared<LogSinkOutputDebugString>(priority, type);
+#else
+		log_sink_ = std::make_shared<LogSinkSyslog>(ident_.c_str(), priority, type);
+#endif
+	}
+
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	{
+		if (log_sink_)
+			log_sink_->log(timestamp, priority, type, tag, message);
+	}
+
+protected:
+	log_sink_ptr log_sink_;
 	std::string ident_;
 };
 

@@ -50,14 +50,8 @@ int main(int argc, char** argv)
 			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			/// Log error and higher prio messages to cerr
 			make_shared<LogSinkCerr>(LogPriority::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
-			/// Log everything (prio debug and above, special and normal logs) to OutputDebugString
-			make_shared<LogSinkOutputDebugString>(LogPriority::debug, LogSink::Type::all),
-			/// Log everything (prio debug and above, special and normal logs) to os_log
-			make_shared<LogSinkUnifiedLogging>(LogPriority::debug, LogSink::Type::all),
-			/// Log everything (prio debug and above, special and normal logs) to Android log
-			make_shared<LogSinkAndroid>("aixlog_android", LogPriority::debug, LogSink::Type::all),			
-			/// Log special logs to syslog
-			make_shared<LogSinkSyslog>("aixlog_syslog", LogPriority::debug, LogSink::Type::special),
+			/// Log special logs to native log (Syslog on Linux, Android Log on Android, OutputDebugString on Windows, Unified logging on Apple)
+			make_shared<LogSinkNative>("aixlog", LogPriority::debug, LogSink::Type::special),
 			/// Callback log sink with cout logging in a lambda function
 			make_shared<LogSinkCallback>(LogPriority::debug, LogSink::Type::all, 
 				[](const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message)
