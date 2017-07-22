@@ -50,7 +50,7 @@ int main(int argc, char** argv)
 			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			/// Log error and higher prio messages to cerr
 			make_shared<LogSinkCerr>(LogPriority::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
-			/// Log special logs to native log (Syslog on Linux, Android Log on Android, OutputDebugString on Windows, Unified logging on Apple)
+			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
 			make_shared<LogSinkNative>("aixlog", LogPriority::debug, LogSink::Type::special),
 			/// Callback log sink with cout logging in a lambda function
 			make_shared<LogSinkCallback>(LogPriority::debug, LogSink::Type::all, 

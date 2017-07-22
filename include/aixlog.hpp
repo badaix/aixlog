@@ -598,6 +598,54 @@ protected:
 
 
 
+/// Not tested due to unavailability of Windows
+struct LogSinkEventLog : public LogSink
+{
+	LogSinkEventLog(const std::string& ident, LogPriority priority, Type type = Type::all) : LogSink(priority, type)
+	{
+#ifdef _WIN32
+		event_log = RegisterEventSource(NULL, ident.c_str());
+#endif
+	}
+
+#ifdef _WIN32
+	WORD get_type(LogPriority priority) const
+	{
+		switch (priority)
+		{
+			case LogPriority::emerg:
+			case LogPriority::alert:
+			case LogPriority::critical:
+			case LogPriority::error:
+				return EVENTLOG_ERROR_TYPE;
+			case LogPriority::warning:
+				return EVENTLOG_WARNING_TYPE;
+			case LogPriority::notice:
+				return EVENTLOG_SUCCESS;
+			case LogPriority::info:
+			case LogPriority::debug:
+				return EVENTLOG_INFORMATION_TYPE;
+			default: 
+				return EVENTLOG_INFORMATION_TYPE;
+		}
+	}
+#endif
+
+	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	{
+#ifdef _WIN32
+		ReportEvent(event_log, get_type(priority), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
+#endif
+	}
+
+protected:
+#ifdef _WIN32
+	HANDLE event_log;
+#endif
+};
+
+
+
 struct LogSinkNative : public LogSink
 {
 	LogSinkNative(const std::string& ident, LogPriority priority, Type type = Type::all) : 
@@ -610,7 +658,7 @@ struct LogSinkNative : public LogSink
 #elif __APPLE__
 		log_sink_ = std::make_shared<LogSinkUnifiedLogging>(priority, type);
 #elif _WIN32
-		log_sink_ = std::make_shared<LogSinkOutputDebugString>(priority, type);
+		log_sink_ = std::make_shared<LogSinkEventLog>(priority, type);
 #else
 		log_sink_ = std::make_shared<LogSinkSyslog>(ident_.c_str(), priority, type);
 #endif
