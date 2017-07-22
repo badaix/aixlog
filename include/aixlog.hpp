@@ -545,7 +545,7 @@ struct LogSinkSyslog : public LogSink
 
 struct LogSinkAndroid : public LogSink
 {
-	LogSinkAndroid(LogPriority priority, Type type = Type::all, const std::string& default_tag = "") : LogSink(priority, type), default_tag_(default_tag)
+	LogSinkAndroid(LogPriority priority, Type type = Type::all, const std::string& default_tag = "", bool prepend_default_tag = true) : LogSink(priority, type), default_tag_(default_tag), prepend_default_tag_(prepend_default_tag)
 	{
 	}
 
@@ -577,12 +577,24 @@ struct LogSinkAndroid : public LogSink
 	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
 	{
 #ifdef __ANDROID__
-		__android_log_write(get_android_prio(priority), tag?tag.tag.c_str():default_tag_.c_str(), message.c_str());
+		std::string log_tag;// = default_tag_;
+		if (tag)
+		{
+			if (prepend_default_tag_ && !default_tag_.empty())
+				log_tag = default_tag_ + "." + tag.tag;
+			else
+				log_tag = tag.tag;
+		}
+		else
+			log_tag = default_tag_;
+
+		__android_log_write(get_android_prio(priority), log_tag.c_str(), message.c_str());
 #endif
 	}
 
 protected:
 	std::string default_tag_;
+	bool prepend_default_tag_;
 };
 
 

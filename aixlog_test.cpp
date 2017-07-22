@@ -54,6 +54,8 @@ int main(int argc, char** argv)
 			make_shared<LogSinkOutputDebugString>(LogPriority::debug, LogSink::Type::all),
 			/// Log everything (prio debug and above, special and normal logs) to os_log
 			make_shared<LogSinkUnifiedLogging>(LogPriority::debug, LogSink::Type::all),
+			/// Log everything (prio debug and above, special and normal logs) to Android log
+			make_shared<LogSinkAndroid>(LogPriority::debug, LogSink::Type::all, "aixlog"),			
 			/// Log special logs to syslog
 			make_shared<LogSinkSyslog>("test", LogPriority::debug, LogSink::Type::special),
 			/// Callback log sink with cout logging in a lambda function
