@@ -545,7 +545,7 @@ struct LogSinkSyslog : public LogSink
 
 struct LogSinkAndroid : public LogSink
 {
-	LogSinkAndroid(LogPriority priority, Type type = Type::all, const std::string& default_tag = "", bool prepend_default_tag = true) : LogSink(priority, type), default_tag_(default_tag), prepend_default_tag_(prepend_default_tag)
+	LogSinkAndroid(const std::string& ident, LogPriority priority, Type type = Type::all) : LogSink(priority, type), ident_(ident)
 	{
 	}
 
@@ -580,21 +580,20 @@ struct LogSinkAndroid : public LogSink
 		std::string log_tag;// = default_tag_;
 		if (tag)
 		{
-			if (prepend_default_tag_ && !default_tag_.empty())
-				log_tag = default_tag_ + "." + tag.tag;
+			if (!ident_.empty())
+				log_tag = ident_ + "." + tag.tag;
 			else
 				log_tag = tag.tag;
 		}
 		else
-			log_tag = default_tag_;
+			log_tag = ident_;
 
 		__android_log_write(get_android_prio(priority), log_tag.c_str(), message.c_str());
 #endif
 	}
 
 protected:
-	std::string default_tag_;
-	bool prepend_default_tag_;
+	std::string ident_;
 };
 
 
