@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 	LOG(EMERG) << TAG("hello") << "LOG(EMERG) << TAG(\"hello\") no line break";
 	LOG(EMERG) << "LOG(EMERG) 2 no line break";
 	LOG(ALERT) << "LOG(ALERT): change in loglevel will add a line break";
-	LOG(ERR) << "LOG(ERR)";
+	LOG(ERROR) << "LOG(ERROR)";
 	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
 	LOG(NOTICE) << "LOG(NOTICE)\n";
 	LOG(INFO) << "LOG(INFO)\n";

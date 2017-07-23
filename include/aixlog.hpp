@@ -85,7 +85,7 @@ enum Priority
 	EMERG = 0,   // 0 system is unusable
 	ALERT = 1,   // 1 action must be taken immediately
 	CRIT = 2,    // 2 critical conditions
-	ERR = 3,     // 3 error conditions
+	ERROR = 3,     // 3 error conditions
 	WARNING = 4, // 4 warning conditions
 	NOTICE = 5,  // 5 normal, but significant, condition
 	INFO = 6,    // 6 informational message
@@ -98,7 +98,7 @@ enum class LogPriority : std::int8_t
 	emerg   = EMERG,
 	alert   = ALERT,
 	critical= CRIT,
-	error   = ERR,
+	error   = ERROR,
 	warning = WARNING,
 	notice  = NOTICE,
 	info    = INFO,
