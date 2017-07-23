@@ -68,22 +68,7 @@
 #define LOG(...) LOG_X(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
 #define SLOG(...) SLOG_X(,##__VA_ARGS__, SLOG_TAG(__VA_ARGS__), SLOG_WO_TAG(__VA_ARGS__))
 
-#define LOGD LOG(LogPriority::debug)
-#define LOGI LOG(LogPriority::info)
-#define LOGN LOG(LogPriority::notice)
-#define LOGW LOG(LogPriority::warning)
-#define LOGE LOG(LogPriority::error)
-#define LOGC LOG(LogPriority::critical)
-#define LOGA LOG(LogPriority::alert)
-
-#define SLOGD LOGD << LogType::special
-#define SLOGI LOGI << LogType::special
-#define SLOGN LOGN << LogType::special
-#define SLOGW LOGW << LogType::special
-#define SLOGE LOGE << LogType::special
-#define SLOGC LOGC << LogType::special
-#define SLOGA LOGA << LogType::special
-
+#define FUNC __func__
 #define TAG Tag
 #define COND Conditional
 
@@ -95,22 +80,34 @@ enum class LogType
 };
 
 
+enum Priority
+{
+	EMERG = 0,   // 0 system is unusable
+	ALERT = 1,   // 1 action must be taken immediately
+	CRIT = 2,    // 2 critical conditions
+	ERR = 3,     // 3 error conditions
+	WARNING = 4, // 4 warning conditions
+	NOTICE = 5,  // 5 normal, but significant, condition
+	INFO = 6,    // 6 informational message
+	DEBUG = 7    // 7 debug-level message
+};
+
 
 enum class LogPriority : std::int8_t
 {
-	emerg   = LOG_EMERG,   // 0 system is unusable
-	alert   = LOG_ALERT,   // 1 action must be taken immediately
-	critical= LOG_CRIT,    // 2 critical conditions
-	error   = LOG_ERR,     // 3 error conditions
-	warning = LOG_WARNING, // 4 warning conditions
-	notice  = LOG_NOTICE,  // 5 normal, but significant, condition
-	info    = LOG_INFO,    // 6 informational message
-	debug   = LOG_DEBUG    // 7 debug-level message
+	emerg   = EMERG,
+	alert   = ALERT,
+	critical= CRIT,
+	error   = ERR,
+	warning = WARNING,
+	notice  = NOTICE,
+	info    = INFO,
+	debug   = DEBUG
 };
 
 
 
-enum class LogColor
+enum class Color
 {
     none = 0,
     black = 1,
@@ -125,16 +122,16 @@ enum class LogColor
 
 
 
-struct Color
+struct LogColor
 {
-	Color(LogColor foreground = LogColor::none, LogColor background = LogColor::none) :
+	LogColor(Color foreground = Color::none, Color background = Color::none) :
 		foreground(foreground),
 		background(background)
 	{
 	}
 
-	LogColor foreground;
-	LogColor background;
+	Color foreground;
+	Color background;
 };
 
 
@@ -740,20 +737,20 @@ static std::ostream& operator<< (std::ostream& os, const Conditional& conditiona
 
 
 
-static std::ostream& operator<< (std::ostream& os, const Color& color)
+static std::ostream& operator<< (std::ostream& os, const LogColor& log_color)
 {
     os << "\033[";
-    if ((color.foreground == LogColor::none) && (color.background == LogColor::none))
+    if ((log_color.foreground == Color::none) && (log_color.background == Color::none))
         os << "0"; // reset colors if no params
 
-    if (color.foreground != LogColor::none) 
+    if (log_color.foreground != Color::none) 
 	{
-        os << 29 + (int)color.foreground;
-        if (color.background != LogColor::none) 
+        os << 29 + (int)log_color.foreground;
+        if (log_color.background != Color::none) 
 			os << ";";
     }
-    if (color.background != LogColor::none) 
-        os << 39 + (int)color.background;
+    if (log_color.background != Color::none) 
+        os << 39 + (int)log_color.background;
     os << "m";
 
 	return os;
@@ -761,9 +758,9 @@ static std::ostream& operator<< (std::ostream& os, const Color& color)
 
 
 
-static std::ostream& operator<< (std::ostream& os, const LogColor& logColor)
+static std::ostream& operator<< (std::ostream& os, const Color& color)
 {
-    os << Color(logColor);
+    os << LogColor(color);
 	return os;
 }
 

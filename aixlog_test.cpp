@@ -36,7 +36,7 @@ public:
 
 	void do_something(const std::string& some_string)
 	{
-		LOGI << "LOGI: " << some_string << "\n";
+		LOG(INFO) << "LOG(INFO): " << some_string << "\n";
 	}
 };
 
@@ -63,42 +63,36 @@ int main(int argc, char** argv)
 	);
 
 	/// Log with info prio
-	LOG(LOG_INFO) << "LOG(LOG_INFO)\n";
+	LOG(INFO) << "LOG(INFO)\n";
 	/// Log with info prio and tag
-	LOG(LOG_INFO, "guten tag") << "LOG(LOG_INFO, \"guten tag\")\n";
+	LOG(INFO, "guten tag") << "LOG(INFO, \"guten tag\")\n";
 	/// Log with info prio and explicit tag (same result as above)
-	LOG(LOG_INFO) << TAG("guten tag") << "LOGI << TAG(\"guten tag\")\n";
-	/// Log with info prio
-	LOGI << "LOGI\n";
-	/// Log with info prio and explicit tag
-	LOGI << TAG("guten tag") << "LOGI << TAG(\"guten tag\")\n";
+	LOG(INFO) << TAG("guten tag") << "LOGI << TAG(\"guten tag\")\n";
 	/// Log "special" with info prio
-	SLOG(LOG_INFO) << "SLOG(LOG_INFO)\n";
+	SLOG(INFO) << "SLOG(INFO)\n";
 	/// Log "special" with info prio
-	SLOGI << "SLOGI\n";
-	/// Log "special" with info prio
-	LOGI << LogType::special << "LOGI << LogType::special\n";
+	LOG(INFO) << LogType::special << "LOGI << LogType::special\n";
 	/// Log "special" with info prio and explicit tag
-	LOGI << LogType::special << TAG("guten tag") << "LOGI << LogType::special << TAG(\"guten tag\")\n";
+	LOG(INFO) << LogType::special << TAG("guten tag") << "LOGI << LogType::special << TAG(\"guten tag\")\n";
 
 	/// Different log priorities
-	LOG(LOG_EMERG) << "LOG(LOG_EMERG)\nLOG(LOG_EMERG) Second line\n";
-	LOG(LOG_EMERG) << TAG("hello") << "LOG(LOG_EMERG) << TAG(\"hello\") no line break";
-	LOG(LOG_EMERG) << "LOG(LOG_EMERG) 2 no line break";
-	LOG(LOG_ALERT) << "LOG(LOG_ALERT): change in loglevel will add a line break";
-	LOG(LOG_ERR) << "LOG(LOG_ERR)";
-	LOG(LOG_INFO) << TAG("my tag") << "LOG(LOG_INFO) << TAG(\"my tag\")n";
-	LOG(LOG_NOTICE) << "LOG(LOG_NOTICE)\n";
-	LOG(LOG_INFO) << "LOG(LOG_INFO)\n";
-	LOG(LOG_DEBUG) << "LOG(LOG_DEBUG)\n";
+	LOG(EMERG) << "LOG(EMERG)\nLOG(EMERG) Second line\n";
+	LOG(EMERG) << TAG("hello") << "LOG(EMERG) << TAG(\"hello\") no line break";
+	LOG(EMERG) << "LOG(EMERG) 2 no line break";
+	LOG(ALERT) << "LOG(ALERT): change in loglevel will add a line break";
+	LOG(ERR) << "LOG(ERR)";
+	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
+	LOG(NOTICE) << "LOG(NOTICE)\n";
+	LOG(INFO) << "LOG(INFO)\n";
+	LOG(DEBUG) << "LOG(DEBUG)\n";
 
 	/// Conditional logging
-	LOGD << COND(1 == 1) << "LOGD will be logged\n";
-	LOGD << COND(1 == 2) << "LOGD will not be logged\n";
+	LOG(DEBUG) << COND(1 == 1) << "LOGD will be logged\n";
+	LOG(DEBUG) << COND(1 == 2) << "LOGD will not be logged\n";
 
 	/// Colors :-)
-	LOG(LOG_CRIT) << "LOG(LOG_CRIT) " << LogColor::red << "red" << LogColor::none << " default color\n";
-	LOG(LOG_CRIT) << "LOG(LOG_CRIT) " << Color(LogColor::yellow, LogColor::blue) << "yellow on blue background" << LogColor::none << " default color\n";
+	LOG(CRIT) << "LOG(CRIT) " << Color::red << "red" << Color::none << " default color\n";
+	LOG(CRIT) << "LOG(CRIT) " << LogColor(Color::yellow, Color::blue) << "yellow on blue background" << Color::none << " default color\n";
 
 	Test test;
 	test.do_something("doing something...");
