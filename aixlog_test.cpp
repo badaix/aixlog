@@ -27,21 +27,6 @@
 using namespace std;
 
 
-class Test
-{
-public:
-	Test()
-	{
-	}
-
-	void do_something(const std::string& some_string)
-	{
-		LOG(INFO) << "LOG(INFO): " << some_string << "\n";
-	}
-};
-
-
-
 int main(int argc, char** argv)
 {
 	Log::init(
@@ -53,6 +38,7 @@ int main(int argc, char** argv)
 			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
 			make_shared<LogSinkNative>("aixlog", LogPriority::debug, LogSink::Type::special),
 			/// Callback log sink with cout logging in a lambda function
+			/// Could also do file logging
 			make_shared<LogSinkCallback>(LogPriority::debug, LogSink::Type::all, 
 				[](const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message)
 				{
@@ -62,17 +48,17 @@ int main(int argc, char** argv)
 		}
 	);
 
-	/// Log with info prio
+	/// Log with info priority
 	LOG(INFO) << "LOG(INFO)\n";
-	/// Log with info prio and tag
+	/// ... with a tag
 	LOG(INFO, "guten tag") << "LOG(INFO, \"guten tag\")\n";
-	/// Log with info prio and explicit tag (same result as above)
+	/// ... with an explicit tag (same result as above)
 	LOG(INFO) << TAG("guten tag") << "LOGI << TAG(\"guten tag\")\n";
 	/// Log "special" with info prio
 	SLOG(INFO) << "SLOG(INFO)\n";
-	/// Log "special" with info prio
+	/// Log with explicit "special" type
 	LOG(INFO) << LogType::special << "LOGI << LogType::special\n";
-	/// Log "special" with info prio and explicit tag
+	/// ... with explicit "special" type and explicit tag
 	LOG(INFO) << LogType::special << TAG("guten tag") << "LOGI << LogType::special << TAG(\"guten tag\")\n";
 
 	/// Different log priorities
@@ -80,21 +66,20 @@ int main(int argc, char** argv)
 	LOG(EMERG) << TAG("hello") << "LOG(EMERG) << TAG(\"hello\") no line break";
 	LOG(EMERG) << "LOG(EMERG) 2 no line break";
 	LOG(ALERT) << "LOG(ALERT): change in loglevel will add a line break";
+	LOG(CRIT) << "LOG(CRIT)";
 	LOG(ERROR) << "LOG(ERROR)";
-	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
+	LOG(WARNING) << "LOG(WARNING)";
 	LOG(NOTICE) << "LOG(NOTICE)\n";
 	LOG(INFO) << "LOG(INFO)\n";
+	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
 	LOG(DEBUG) << "LOG(DEBUG)\n";
 
 	/// Conditional logging
-	LOG(DEBUG) << COND(1 == 1) << "LOGD will be logged\n";
-	LOG(DEBUG) << COND(1 == 2) << "LOGD will not be logged\n";
+	LOG(DEBUG) << COND(1 == 1) << "LOG(DEBUG) will be logged\n";
+	LOG(DEBUG) << COND(1 == 2) << "LOG(DEBUG) will not be logged\n";
 
 	/// Colors :-)
 	LOG(CRIT) << "LOG(CRIT) " << Color::red << "red" << Color::none << " default color\n";
 	LOG(CRIT) << "LOG(CRIT) " << LogColor(Color::yellow, Color::blue) << "yellow on blue background" << Color::none << " default color\n";
-
-	Test test;
-	test.do_something("doing something...");
 }
 
