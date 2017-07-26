@@ -32,15 +32,15 @@ int main(int argc, char** argv)
 	Log::init(
 		{
 			/// Log normal (i.e. non-special) logs to LogSinkCout
-			make_shared<LogSinkCout>(LogPriority::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
+			make_shared<LogSinkCout>(LogSeverity::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			/// Log error and higher prio messages to cerr
-			make_shared<LogSinkCerr>(LogPriority::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
+			make_shared<LogSinkCerr>(LogSeverity::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
 			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
-			make_shared<LogSinkNative>("aixlog", LogPriority::debug, LogSink::Type::special),
+			make_shared<LogSinkNative>("aixlog", LogSeverity::debug, LogSink::Type::special),
 			/// Callback log sink with cout logging in a lambda function
 			/// Could also do file logging
-			make_shared<LogSinkCallback>(LogPriority::debug, LogSink::Type::all, 
-				[](const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message)
+			make_shared<LogSinkCallback>(LogSeverity::debug, LogSink::Type::all, 
+				[](const time_point_sys_clock& timestamp, LogSeverity priority, LogType type, const Tag& tag, const std::string& message)
 				{
 					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tprio: " << Log::toString(priority) << " (" << (int)priority << ")\n\ttype: " << (type == LogType::normal?"normal":"special") << "\n";
 				}
@@ -53,23 +53,20 @@ int main(int argc, char** argv)
 	/// ... with a tag
 	LOG(INFO, "guten tag") << "LOG(INFO, \"guten tag\")\n";
 	/// ... with an explicit tag (same result as above)
-	LOG(INFO) << TAG("guten tag") << "LOGI << TAG(\"guten tag\")\n";
+	LOG(INFO) << TAG("guten tag") << "LOG(INFO) << TAG(\"guten tag\")\n";
 	/// Log "special" with info prio
 	SLOG(INFO) << "SLOG(INFO)\n";
 	/// Log with explicit "special" type
-	LOG(INFO) << LogType::special << "LOGI << LogType::special\n";
+	LOG(INFO) << LogType::special << "LOG(INFO) << LogType::special\n";
 	/// ... with explicit "special" type and explicit tag
-	LOG(INFO) << LogType::special << TAG("guten tag") << "LOGI << LogType::special << TAG(\"guten tag\")\n";
+	LOG(INFO) << LogType::special << TAG("guten tag") << "LOG(INFO) << LogType::special << TAG(\"guten tag\")\n";
 
 	/// Different log priorities
-	LOG(EMERG) << "LOG(EMERG)\nLOG(EMERG) Second line\n";
-	LOG(EMERG) << TAG("hello") << "LOG(EMERG) << TAG(\"hello\") no line break";
-	LOG(EMERG) << "LOG(EMERG) 2 no line break";
-	LOG(ALERT) << "LOG(ALERT): change in loglevel will add a line break";
-	LOG(CRIT) << "LOG(CRIT)";
-	LOG(ERROR) << "LOG(ERROR)";
+	LOG(FATAL) << "LOG(FATAL)\nLOG(FATAL) Second line\n";
+	LOG(FATAL) << TAG("hello") << "LOG(FATAL) << TAG(\"hello\") no line break";
+	LOG(FATAL) << "LOG(FATAL) 2 no line break";
+	LOG(ERROR) << "LOG(ERROR): change in loglevel will add a line break";
 	LOG(WARNING) << "LOG(WARNING)";
-	LOG(NOTICE) << "LOG(NOTICE)\n";
 	LOG(INFO) << "LOG(INFO)\n";
 	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
 	LOG(DEBUG) << "LOG(DEBUG)\n";
@@ -79,7 +76,7 @@ int main(int argc, char** argv)
 	LOG(DEBUG) << COND(1 == 2) << "LOG(DEBUG) will not be logged\n";
 
 	/// Colors :-)
-	LOG(CRIT) << "LOG(CRIT) " << Color::red << "red" << Color::none << " default color\n";
-	LOG(CRIT) << "LOG(CRIT) " << LogColor(Color::yellow, Color::blue) << "yellow on blue background" << Color::none << " default color\n";
+	LOG(FATAL) << "LOG(FATAL) " << Color::red << "red" << Color::none << " default color\n";
+	LOG(FATAL) << "LOG(FATAL) " << LogColor(Color::yellow, Color::blue) << "yellow on blue background" << Color::none << " default color\n";
 }
 

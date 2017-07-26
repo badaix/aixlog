@@ -54,11 +54,11 @@
 
 
 /// Internal helper defines
-#define LOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__func__) << LogType::normal
-#define SLOG_WO_TAG(P) std::clog << (LogPriority)P << Tag(__func__) << LogType::special
+#define LOG_WO_TAG(P) std::clog << (LogSeverity)P << Tag(__func__) << LogType::normal
+#define SLOG_WO_TAG(P) std::clog << (LogSeverity)P << Tag(__func__) << LogType::special
 
-#define LOG_TAG(P, T) std::clog << (LogPriority)P << Tag(T) << LogType::normal
-#define SLOG_TAG(P, T) std::clog << (LogPriority)P << Tag(T) << LogType::special
+#define LOG_TAG(P, T) std::clog << (LogSeverity)P << Tag(T) << LogType::normal
+#define SLOG_TAG(P, T) std::clog << (LogSeverity)P << Tag(T) << LogType::special
 
 #define LOG_X(x,P,T,FUNC, ...)  FUNC
 #define SLOG_X(x,P,T,FUNC, ...)  FUNC
@@ -80,29 +80,41 @@ enum class LogType
 };
 
 
-enum Priority
+enum Severity
 {
-	EMERG = 0,   // 0 system is unusable
-	ALERT = 1,   // 1 action must be taken immediately
-	CRIT = 2,    // 2 critical conditions
-	ERROR = 3,     // 3 error conditions
-	WARNING = 4, // 4 warning conditions
-	NOTICE = 5,  // 5 normal, but significant, condition
-	INFO = 6,    // 6 informational message
-	DEBUG = 7    // 7 debug-level message
+// https://chromium.googlesource.com/chromium/mini_chromium/+/master/base/logging.cc
+
+//	Boost		Syslog		Android		macOS
+//
+//							UNKNOWN
+//							DEFAULT
+//	trace					VERBOSE
+//	debug		DEBUG		DEBUG		OS_LOG_TYPE_DEBUG		debug-level message
+//	info		INFO		INFO		OS_LOG_TYPE_INFO		informational message
+//				NOTICE											normal, but significant, condition
+//	warning		WARNING		WARN		OS_LOG_TYPE_DEFAULT		warning conditions
+//	error		ERROR		ERROR		OS_LOG_TYPE_ERROR		error conditions
+//	fatal		CRIT		FATAL		OS_LOG_TYPE_FAULT		critical conditions
+//				ALERT											action must be taken immediately
+//				EMERG											system is unusable
+
+	TRACE = 0,
+	DEBUG = 1,
+	INFO = 2,
+	WARNING = 3,
+	ERROR = 4,
+	FATAL = 5
 };
 
 
-enum class LogPriority : std::int8_t
+enum class LogSeverity : std::int8_t
 {
-	emerg   = EMERG,
-	alert   = ALERT,
-	critical= CRIT,
-	error   = ERROR,
-	warning = WARNING,
-	notice  = NOTICE,
+	trace	= TRACE,
+	debug   = DEBUG,
 	info    = INFO,
-	debug   = DEBUG
+	warning = WARNING,
+	error   = ERROR,
+	fatal   = FATAL
 };
 
 
@@ -199,7 +211,7 @@ struct LogSink
 		all
 	};
 
-	LogSink(LogPriority priority, Type type) : priority(priority), sink_type_(type)
+	LogSink(LogSeverity severity, Type type) : severity(severity), sink_type_(type)
 	{
 	}
 
@@ -207,7 +219,7 @@ struct LogSink
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const = 0;
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const = 0;
 	virtual Type get_type() const
 	{
 		return sink_type_;
@@ -219,7 +231,7 @@ struct LogSink
 		return *this;
 	}
 
-	LogPriority priority;
+	LogSeverity severity;
 
 protected:
 	Type sink_type_;
@@ -227,7 +239,7 @@ protected:
 
 
 
-static std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
+static std::ostream& operator<< (std::ostream& os, const LogSeverity& log_severity);
 static std::ostream& operator<< (std::ostream& os, const LogType& log_type);
 static std::ostream& operator<< (std::ostream& os, const Tag& tag);
 static std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
@@ -263,29 +275,25 @@ public:
 		logSinks.erase(std::remove(logSinks.begin(), logSinks.end(), sink), logSinks.end());
 	}
 
-	static std::string toString(LogPriority logPriority)
+	static std::string toString(LogSeverity logSeverity)
 	{
-		switch (logPriority)
+		switch (logSeverity)
 		{
-			case LogPriority::emerg:
-				return "Emerg";
-			case LogPriority::alert:
-				return "Alert";
-			case LogPriority::critical:
-				return "Crit";
-			case LogPriority::error:
-				return "Err";
-			case LogPriority::warning:
-				return "Warn";
-			case LogPriority::notice:
-				return "Notice";
-			case LogPriority::info:
-				return "Info";
-			case LogPriority::debug:
+			case LogSeverity::trace:
+				return "Trace";
+			case LogSeverity::debug:
 				return "Debug";
+			case LogSeverity::info:
+				return "Info";
+			case LogSeverity::warning:
+				return "Warn";
+			case LogSeverity::error:
+				return "Err";
+			case LogSeverity::fatal:
+				return "Fatal";
 			default:
 				std::stringstream ss;
-				ss << logPriority;
+				ss << logSeverity;
 				return ss.str();
 		}
 	}
@@ -310,13 +318,13 @@ protected:
 							((type_ == LogType::special) && (sink->get_type() == LogSink::Type::special)) ||
 							((type_ == LogType::normal) && (sink->get_type() == LogSink::Type::normal))
 					)
-						if (priority_ <= sink->priority)
-							sink->log(now, priority_, type_, tag_, buffer_.str());
+						if (severity_ >= sink->severity)
+							sink->log(now, severity_, type_, tag_, buffer_.str());
 				}
 			}
 			buffer_.str("");
 			buffer_.clear();
-			//priority_ = debug; // default to debug for each message
+			//severity_ = debug; // default to debug for each message
 			//type_ = kNormal;
 			tag_ = nullptr;
 			conditional_.set(true);
@@ -327,8 +335,8 @@ protected:
 	int overflow(int c)
 	{
 /*		if (
-				(priority_ > loglevel_) && 
-				((type_ == kNormal) || !syslog_enabled_) // || (syslogpriority_ > loglevel_))
+				(severity_ > loglevel_) && 
+				((type_ == kNormal) || !syslog_enabled_) // || (syslogseverity_ > loglevel_))
 		)
 			return c;
 */		if (c != EOF)
@@ -348,13 +356,13 @@ protected:
 
 
 private:
-	friend std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority);
+	friend std::ostream& operator<< (std::ostream& os, const LogSeverity& log_severity);
 	friend std::ostream& operator<< (std::ostream& os, const LogType& log_type);
 	friend std::ostream& operator<< (std::ostream& os, const Tag& tag);
 	friend std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
 
 	std::stringstream buffer_;
-	LogPriority priority_;
+	LogSeverity severity_;
 	LogType type_;
 	Tag tag_;
 	Conditional conditional_;
@@ -365,8 +373,8 @@ private:
 
 struct LogSinkFormat : public LogSink
 {
-	LogSinkFormat(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag)") : // #logline") : 
-		LogSink(priority, type), 
+	LogSinkFormat(LogSeverity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag)") : // #logline") : 
+		LogSink(severity, type), 
 		format_(format)
 	{
 	}
@@ -376,12 +384,12 @@ struct LogSinkFormat : public LogSink
 		format_ = format;
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const = 0;
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const = 0;
 
 
 protected:
 	/// strftime format + proprietary "#ms" for milliseconds
-	virtual void do_log(std::ostream& stream, const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void do_log(std::ostream& stream, const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
 		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
 		struct::tm now_tm = *std::localtime(&now_c);
@@ -400,7 +408,7 @@ protected:
 
 		pos = result.find("#prio");
 		if (pos != std::string::npos)
-			result.replace(pos, 5, Log::toString(priority));
+			result.replace(pos, 5, Log::toString(severity));
 
 
 		pos = result.find("#tag");
@@ -429,15 +437,15 @@ protected:
 
 struct LogSinkCout : public LogSinkFormat
 {
-	LogSinkCout(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
-		LogSinkFormat(priority, type, format)
+	LogSinkCout(LogSeverity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
+		LogSinkFormat(severity, type, format)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
-		if (priority <= this->priority)
-			do_log(std::cout, timestamp, priority, type, tag, message);
+		if (severity >= this->severity)
+			do_log(std::cout, timestamp, severity, type, tag, message);
 	}
 };
 
@@ -445,15 +453,15 @@ struct LogSinkCout : public LogSinkFormat
 
 struct LogSinkCerr : public LogSinkFormat
 {
-	LogSinkCerr(LogPriority priority, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
-		LogSinkFormat(priority, type, format)
+	LogSinkCerr(LogSeverity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
+		LogSinkFormat(severity, type, format)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
-		if (priority <= this->priority)
-			do_log(std::cerr, timestamp, priority, type, tag, message);
+		if (severity >= this->severity)
+			do_log(std::cerr, timestamp, severity, type, tag, message);
 	}
 };
 
@@ -462,11 +470,11 @@ struct LogSinkCerr : public LogSinkFormat
 /// Not tested due to unavailability of Windows
 struct LogSinkOutputDebugString : LogSink
 {
-	LogSinkOutputDebugString(LogPriority priority, Type type = Type::all, const std::string& default_tag = "") : LogSink(priority, type)
+	LogSinkOutputDebugString(LogSeverity severity, Type type = Type::all, const std::string& default_tag = "") : LogSink(severity, type)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
 #ifdef _WIN32
 		OutputDebugString(message.c_str());
@@ -478,38 +486,36 @@ struct LogSinkOutputDebugString : LogSink
 
 struct LogSinkUnifiedLogging : LogSink
 {
-	LogSinkUnifiedLogging(LogPriority priority, Type type = Type::all) : LogSink(priority, type)
+	LogSinkUnifiedLogging(LogSeverity severity, Type type = Type::all) : LogSink(severity, type)
 	{
 	}
 
 #ifdef __APPLE__
-	os_log_type_t get_os_log_type(LogPriority priority) const
+	os_log_type_t get_os_log_type(LogSeverity severity) const
 	{
-		switch (priority)
+		switch (severity)
 		{
-			case LogPriority::emerg:
-			case LogPriority::alert:
-			case LogPriority::critical:
-				return OS_LOG_TYPE_FAULT;
-			case LogPriority::error:
-				return OS_LOG_TYPE_ERROR;
-			case LogPriority::warning:
-			case LogPriority::notice:
-				return OS_LOG_TYPE_DEFAULT;
-			case LogPriority::info:
-				return OS_LOG_TYPE_INFO;
-			case LogPriority::debug:
+			case LogSeverity::trace:
+			case LogSeverity::debug:
 				return OS_LOG_TYPE_DEBUG;
+			case LogSeverity::info:
+				return OS_LOG_TYPE_INFO;
+			case LogSeverity::warning:
+				return OS_LOG_TYPE_DEFAULT;
+			case LogSeverity::error:
+				return OS_LOG_TYPE_ERROR;
+			case LogSeverity::fatal:
+				return OS_LOG_TYPE_FAULT;
 			default: 
 				return OS_LOG_TYPE_DEFAULT;
 		}
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
 #ifdef __APPLE__
-		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(priority), "%{public}s", message.c_str());
+		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(severity), "%{public}s", message.c_str());
 #endif
 	}
 };
@@ -518,7 +524,7 @@ struct LogSinkUnifiedLogging : LogSink
 
 struct LogSinkSyslog : public LogSink
 {
-	LogSinkSyslog(const char* ident, LogPriority priority, Type type) : LogSink(priority, type)
+	LogSinkSyslog(const char* ident, LogSeverity severity, Type type) : LogSink(severity, type)
 	{
 #ifndef _WIN32
 		openlog(ident, LOG_PID, LOG_USER);
@@ -530,10 +536,10 @@ struct LogSinkSyslog : public LogSink
 		closelog();
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
 #ifndef _WIN32
-		syslog((int)priority, "%s", message.c_str());
+		syslog((int)severity, "%s", message.c_str());
 #endif
 	}
 };
@@ -542,36 +548,34 @@ struct LogSinkSyslog : public LogSink
 
 struct LogSinkAndroid : public LogSink
 {
-	LogSinkAndroid(const std::string& ident, LogPriority priority, Type type = Type::all) : LogSink(priority, type), ident_(ident)
+	LogSinkAndroid(const std::string& ident, LogSeverity severity, Type type = Type::all) : LogSink(severity, type), ident_(ident)
 	{
 	}
 
 #ifdef __ANDROID__
-	android_LogPriority get_android_prio(LogPriority priority) const
+	android_LogSeverity get_android_prio(LogSeverity severity) const
 	{
-		switch (priority)
+		switch (severity)
 		{
-			case LogPriority::emerg:
-			case LogPriority::alert:
-			case LogPriority::critical:
-				return ANDROID_LOG_FATAL;
-			case LogPriority::error:
-				return ANDROID_LOG_ERROR;
-			case LogPriority::warning:
-				return ANDROID_LOG_WARN;
-			case LogPriority::notice:
-				return ANDROID_LOG_DEFAULT;
-			case LogPriority::info:
-				return ANDROID_LOG_INFO;
-			case LogPriority::debug:
+			case LogSeverity::trace:
+				return ANDROID_LOG_VERBOSE;
+			case LogSeverity::debug:
 				return ANDROID_LOG_DEBUG;
+			case LogSeverity::info:
+				return ANDROID_LOG_INFO;
+			case LogSeverity::warning:
+				return ANDROID_LOG_WARN;
+			case LogSeverity::error:
+				return ANDROID_LOG_ERROR;
+			case LogSeverity::fatal:
+				return ANDROID_LOG_FATAL;
 			default: 
 				return ANDROID_LOG_UNKNOWN;
 		}
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
 #ifdef __ANDROID__
 		std::string log_tag;// = default_tag_;
@@ -585,7 +589,7 @@ struct LogSinkAndroid : public LogSink
 		else
 			log_tag = ident_;
 
-		__android_log_write(get_android_prio(priority), log_tag.c_str(), message.c_str());
+		__android_log_write(get_android_prio(severity), log_tag.c_str(), message.c_str());
 #endif
 	}
 
@@ -598,7 +602,7 @@ protected:
 /// Not tested due to unavailability of Windows
 struct LogSinkEventLog : public LogSink
 {
-	LogSinkEventLog(const std::string& ident, LogPriority priority, Type type = Type::all) : LogSink(priority, type)
+	LogSinkEventLog(const std::string& ident, LogSeverity severity, Type type = Type::all) : LogSink(severity, type)
 	{
 #ifdef _WIN32
 		event_log = RegisterEventSource(NULL, ident.c_str());
@@ -606,32 +610,30 @@ struct LogSinkEventLog : public LogSink
 	}
 
 #ifdef _WIN32
-	WORD get_type(LogPriority priority) const
+	WORD get_type(LogSeverity severity) const
 	{
-		switch (priority)
+		switch (severity)
 		{
-			case LogPriority::emerg:
-			case LogPriority::alert:
-			case LogPriority::critical:
-			case LogPriority::error:
-				return EVENTLOG_ERROR_TYPE;
-			case LogPriority::warning:
-				return EVENTLOG_WARNING_TYPE;
-			case LogPriority::notice:
-				return EVENTLOG_SUCCESS;
-			case LogPriority::info:
-			case LogPriority::debug:
+			case LogSeverity::trace:
+			case LogSeverity::debug:
 				return EVENTLOG_INFORMATION_TYPE;
+			case LogSeverity::info:
+				return EVENTLOG_SUCCESS;
+			case LogSeverity::warning:
+				return EVENTLOG_WARNING_TYPE;
+			case LogSeverity::error:
+			case LogSeverity::fatal:
+				return EVENTLOG_ERROR_TYPE;
 			default: 
 				return EVENTLOG_INFORMATION_TYPE;
 		}
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
 #ifdef _WIN32
-		ReportEvent(event_log, get_type(priority), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
+		ReportEvent(event_log, get_type(severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
 #endif
 	}
 
@@ -645,26 +647,26 @@ protected:
 
 struct LogSinkNative : public LogSink
 {
-	LogSinkNative(const std::string& ident, LogPriority priority, Type type = Type::all) : 
-		LogSink(priority, type), 
+	LogSinkNative(const std::string& ident, LogSeverity severity, Type type = Type::all) : 
+		LogSink(severity, type), 
 		log_sink_(nullptr), 
 		ident_(ident)
 	{
 #ifdef __ANDROID__
-		log_sink_ = std::make_shared<LogSinkAndroid>(ident_, priority, type);
+		log_sink_ = std::make_shared<LogSinkAndroid>(ident_, severity, type);
 #elif __APPLE__
-		log_sink_ = std::make_shared<LogSinkUnifiedLogging>(priority, type);
+		log_sink_ = std::make_shared<LogSinkUnifiedLogging>(severity, type);
 #elif _WIN32
-		log_sink_ = std::make_shared<LogSinkEventLog>(priority, type);
+		log_sink_ = std::make_shared<LogSinkEventLog>(severity, type);
 #else
-		log_sink_ = std::make_shared<LogSinkSyslog>(ident_.c_str(), priority, type);
+		log_sink_ = std::make_shared<LogSinkSyslog>(ident_.c_str(), severity, type);
 #endif
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
 		if (log_sink_)
-			log_sink_->log(timestamp, priority, type, tag, message);
+			log_sink_->log(timestamp, severity, type, tag, message);
 	}
 
 protected:
@@ -676,16 +678,16 @@ protected:
 
 struct LogSinkCallback : public LogSink
 {
-	typedef std::function<void(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message)> callback_fun;
+	typedef std::function<void(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message)> callback_fun;
 
-	LogSinkCallback(LogPriority priority, Type type, callback_fun callback) : LogSink(priority, type), callback(callback)
+	LogSinkCallback(LogSeverity severity, Type type, callback_fun callback) : LogSink(severity, type), callback(callback)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogPriority priority, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
-		if (callback && (priority <= this->priority))
-			callback(timestamp, priority, type, tag, message);
+		if (callback && (severity >= this->severity))
+			callback(timestamp, severity, type, tag, message);
 	}
 
 private:
@@ -694,13 +696,13 @@ private:
 
 
 
-static std::ostream& operator<< (std::ostream& os, const LogPriority& log_priority)
+static std::ostream& operator<< (std::ostream& os, const LogSeverity& log_severity)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log && (log->priority_ != log_priority))
+	if (log && (log->severity_ != log_severity))
 	{
 		log->sync();
-		log->priority_ = log_priority;
+		log->severity_ = log_severity;
 	}
 	return os;
 }
