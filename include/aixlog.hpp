@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.6.0
+    version 0.7.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -32,6 +32,10 @@
 #ifndef AIX_LOG_HPP
 #define AIX_LOG_HPP
 
+#ifndef _WIN32
+#define _HAS_SYSLOG_
+#endif
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -48,7 +52,8 @@
 #endif
 #ifdef _WIN32
 #include <Windows.h>
-#else
+#endif
+#ifdef _HAS_SYSLOG_
 #include <syslog.h>
 #endif
 
@@ -84,34 +89,36 @@ enum Severity
 {
 // https://chromium.googlesource.com/chromium/mini_chromium/+/master/base/logging.cc
 
-//	Boost		Syslog		Android		macOS
+// Aixlog      Boost      Syslog      Android      macOS      Syslog Desc
 //
-//							UNKNOWN
-//							DEFAULT
-//	trace					VERBOSE
-//	debug		DEBUG		DEBUG		OS_LOG_TYPE_DEBUG		debug-level message
-//	info		INFO		INFO		OS_LOG_TYPE_INFO		informational message
-//				NOTICE											normal, but significant, condition
-//	warning		WARNING		WARN		OS_LOG_TYPE_DEFAULT		warning conditions
-//	error		ERROR		ERROR		OS_LOG_TYPE_ERROR		error conditions
-//	fatal		CRIT		FATAL		OS_LOG_TYPE_FAULT		critical conditions
-//				ALERT											action must be taken immediately
-//				EMERG											system is unusable
+//                        UNKNOWN
+//                        DEFAULT
+// trace       trace                 VERBOSE
+// debug       debug      DEBUG      DEBUG        DEBUG      debug-level message
+// info        info       INFO       INFO         INFO       informational message
+// notice                 NOTICE                             normal, but significant, condition
+// warning     warning    WARNING    WARN         DEFAULT    warning conditions
+// error       error      ERROR      ERROR        ERROR      error conditions
+// fatal       fatal      CRIT       FATAL        FAULT      critical conditions
+//                        ALERT                              action must be taken immediately
+//                        EMERG                              system is unusable
 
 	TRACE = 0,
 	DEBUG = 1,
 	INFO = 2,
-	WARNING = 3,
-	ERROR = 4,
-	FATAL = 5
+	NOTICE = 3,
+	WARNING = 4,
+	ERROR = 5,
+	FATAL = 6
 };
 
 
 enum class LogSeverity : std::int8_t
 {
-	trace	= TRACE,
+	trace   = TRACE,
 	debug   = DEBUG,
 	info    = INFO,
+	notice  = NOTICE,
 	warning = WARNING,
 	error   = ERROR,
 	fatal   = FATAL
@@ -121,8 +128,8 @@ enum class LogSeverity : std::int8_t
 
 enum class Color
 {
-    none = 0,
-    black = 1,
+	none = 0,
+	black = 1,
 	red = 2,
 	green = 3,
 	yellow = 4,
@@ -285,6 +292,8 @@ public:
 				return "Debug";
 			case LogSeverity::info:
 				return "Info";
+			case LogSeverity::notice:
+				return "Notice";
 			case LogSeverity::warning:
 				return "Warn";
 			case LogSeverity::error:
@@ -493,12 +502,14 @@ struct LogSinkUnifiedLogging : LogSink
 #ifdef __APPLE__
 	os_log_type_t get_os_log_type(LogSeverity severity) const
 	{
+		// https://developer.apple.com/documentation/os/os_log_type_t?language=objc
 		switch (severity)
 		{
 			case LogSeverity::trace:
 			case LogSeverity::debug:
 				return OS_LOG_TYPE_DEBUG;
 			case LogSeverity::info:
+			case LogSeverity::notice:
 				return OS_LOG_TYPE_INFO;
 			case LogSeverity::warning:
 				return OS_LOG_TYPE_DEFAULT;
@@ -526,7 +537,7 @@ struct LogSinkSyslog : public LogSink
 {
 	LogSinkSyslog(const char* ident, LogSeverity severity, Type type) : LogSink(severity, type)
 	{
-#ifndef _WIN32
+#ifdef _HAS_SYSLOG_
 		openlog(ident, LOG_PID, LOG_USER);
 #endif
 	}
@@ -536,10 +547,36 @@ struct LogSinkSyslog : public LogSink
 		closelog();
 	}
 
+#ifdef _HAS_SYSLOG_
+	int get_syslog_priority(LogSeverity severity) const
+	{
+		// http://unix.superglobalmegacorp.com/Net2/newsrc/sys/syslog.h.html
+		switch (severity)
+		{
+			case LogSeverity::trace:
+			case LogSeverity::debug:
+				return LOG_DEBUG;
+			case LogSeverity::info:
+				return LOG_INFO;
+			case LogSeverity::notice:
+				return LOG_NOTICE;
+			case LogSeverity::warning:
+				return LOG_WARNING;
+			case LogSeverity::error:
+				return LOG_ERR;
+			case LogSeverity::fatal:
+				return LOG_CRIT;
+			default: 
+				return LOG_INFO;
+		}
+	}
+#endif
+
+
 	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
 	{
-#ifndef _WIN32
-		syslog((int)severity, "%s", message.c_str());
+#ifdef _HAS_SYSLOG_
+		syslog(get_syslog_priority(severity), "%s", message.c_str());
 #endif
 	}
 };
@@ -555,6 +592,7 @@ struct LogSinkAndroid : public LogSink
 #ifdef __ANDROID__
 	android_LogSeverity get_android_prio(LogSeverity severity) const
 	{
+		// https://developer.android.com/ndk/reference/log_8h.html
 		switch (severity)
 		{
 			case LogSeverity::trace:
@@ -562,6 +600,7 @@ struct LogSinkAndroid : public LogSink
 			case LogSeverity::debug:
 				return ANDROID_LOG_DEBUG;
 			case LogSeverity::info:
+			case LogSeverity::notice:
 				return ANDROID_LOG_INFO;
 			case LogSeverity::warning:
 				return ANDROID_LOG_WARN;
@@ -612,12 +651,14 @@ struct LogSinkEventLog : public LogSink
 #ifdef _WIN32
 	WORD get_type(LogSeverity severity) const
 	{
+		// https://msdn.microsoft.com/de-de/library/windows/desktop/aa363679(v=vs.85).aspx
 		switch (severity)
 		{
 			case LogSeverity::trace:
 			case LogSeverity::debug:
 				return EVENTLOG_INFORMATION_TYPE;
 			case LogSeverity::info:
+			case LogSeverity::notice:
 				return EVENTLOG_SUCCESS;
 			case LogSeverity::warning:
 				return EVENTLOG_WARNING_TYPE;
@@ -741,19 +782,19 @@ static std::ostream& operator<< (std::ostream& os, const Conditional& conditiona
 
 static std::ostream& operator<< (std::ostream& os, const LogColor& log_color)
 {
-    os << "\033[";
-    if ((log_color.foreground == Color::none) && (log_color.background == Color::none))
-        os << "0"; // reset colors if no params
+	os << "\033[";
+	if ((log_color.foreground == Color::none) && (log_color.background == Color::none))
+		os << "0"; // reset colors if no params
 
-    if (log_color.foreground != Color::none) 
+	if (log_color.foreground != Color::none) 
 	{
-        os << 29 + (int)log_color.foreground;
-        if (log_color.background != Color::none) 
+		os << 29 + (int)log_color.foreground;
+		if (log_color.background != Color::none) 
 			os << ";";
-    }
-    if (log_color.background != Color::none) 
-        os << 39 + (int)log_color.background;
-    os << "m";
+	}
+	if (log_color.background != Color::none) 
+		os << 39 + (int)log_color.background;
+	os << "m";
 
 	return os;
 }
@@ -762,7 +803,7 @@ static std::ostream& operator<< (std::ostream& os, const LogColor& log_color)
 
 static std::ostream& operator<< (std::ostream& os, const Color& color)
 {
-    os << LogColor(color);
+	os << LogColor(color);
 	return os;
 }
 

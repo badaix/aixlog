@@ -32,14 +32,14 @@ int main(int argc, char** argv)
 	Log::init(
 		{
 			/// Log normal (i.e. non-special) logs to LogSinkCout
-			make_shared<LogSinkCout>(LogSeverity::debug, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
+			make_shared<LogSinkCout>(LogSeverity::trace, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			/// Log error and higher prio messages to cerr
 			make_shared<LogSinkCerr>(LogSeverity::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
 			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
-			make_shared<LogSinkNative>("aixlog", LogSeverity::debug, LogSink::Type::special),
+			make_shared<LogSinkNative>("aixlog", LogSeverity::trace, LogSink::Type::special),
 			/// Callback log sink with cout logging in a lambda function
 			/// Could also do file logging
-			make_shared<LogSinkCallback>(LogSeverity::debug, LogSink::Type::all, 
+			make_shared<LogSinkCallback>(LogSeverity::trace, LogSink::Type::all, 
 				[](const time_point_sys_clock& timestamp, LogSeverity priority, LogType type, const Tag& tag, const std::string& message)
 				{
 					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tprio: " << Log::toString(priority) << " (" << (int)priority << ")\n\ttype: " << (type == LogType::normal?"normal":"special") << "\n";
@@ -67,9 +67,11 @@ int main(int argc, char** argv)
 	LOG(FATAL) << "LOG(FATAL) 2 no line break";
 	LOG(ERROR) << "LOG(ERROR): change in loglevel will add a line break";
 	LOG(WARNING) << "LOG(WARNING)";
+	LOG(NOTICE) << "LOG(NOTICE)";
 	LOG(INFO) << "LOG(INFO)\n";
 	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
 	LOG(DEBUG) << "LOG(DEBUG)\n";
+	LOG(TRACE) << "LOG(TRACE)\n";
 
 	/// Conditional logging
 	LOG(DEBUG) << COND(1 == 1) << "LOG(DEBUG) will be logged\n";
