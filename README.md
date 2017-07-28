@@ -3,8 +3,12 @@
 C++ logging library
 
 ## Features
-* Single header file implementation. Simply include and use it!
+* Single header file implementation
+  * Simply include and use it!
+  * Small code base: adapt it for your needs
+  * No dependcies, just vanilla C++11
 * Use ostream operator `<<`
+  * easy to switch from existing "`cout` logging"
 * Fancy name
 * Native support for various platforms (through LogSinks)
   * Linux, Unix: Syslog
@@ -15,11 +19,15 @@ C++ logging library
   * cout
   * cerr
   * LogSink with custom callback function
+    * implement your own log sink in a lambda with a single line of code
   * Easy to add more...
 * Manipulators for
   * Different log levels: `LOG(LOG_EMERG) << "some message"`
   * Conditional logging: `LOG(LOG_INFO) << COND(false) << "will not be logged\n"`
-  * Support for tags: `LOG(LOG_INFO, "my tag") << "some message"` or `LOG(LOG_INFO) << TAG("my tag") << "some message"`
+  * Support for tags:  
+    `LOG(LOG_INFO, "my tag") << "some message"`  
+    ...is the same as...  
+    `LOG(LOG_INFO) << TAG("my tag") << "some message"`
   * Two different log types "normal" and "special": `LOG(LOG_INFO) << LogType::special << "some message"`
     * special might be used for syslog, while normal is used for console output
     * => Only special tagged messages will go to syslog
