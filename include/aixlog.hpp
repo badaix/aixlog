@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.7.0
+    version 0.8.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -33,7 +33,7 @@
 #define AIX_LOG_HPP
 
 #ifndef _WIN32
-#define _HAS_SYSLOG_
+#define _HAS_SYSLOG_ 1
 #endif
 
 #include <algorithm>
@@ -76,6 +76,7 @@
 #define FUNC __func__
 #define TAG Tag
 #define COND Conditional
+#define SPECIAL LogType::special
 
 
 enum class LogType
@@ -357,7 +358,6 @@ protected:
 		}
 		else
 		{
-			std::cout << "EOF\n";
 			sync();
 		}
 		return c;
@@ -544,7 +544,9 @@ struct LogSinkSyslog : public LogSink
 
 	virtual ~LogSinkSyslog()
 	{
+#ifdef _HAS_SYSLOG_
 		closelog();
+#endif
 	}
 
 #ifdef _HAS_SYSLOG_
@@ -699,9 +701,17 @@ struct LogSinkNative : public LogSink
 		log_sink_ = std::make_shared<LogSinkUnifiedLogging>(severity, type);
 #elif _WIN32
 		log_sink_ = std::make_shared<LogSinkEventLog>(severity, type);
-#else
+#elif _HAS_SYSLOG_
 		log_sink_ = std::make_shared<LogSinkSyslog>(ident_.c_str(), severity, type);
+#else
+		/// will not throw or something. Use "get_logger()" to check for success
+		log_sink_ = nullptr;
 #endif
+	}
+
+	virtual log_sink_ptr get_logger()
+	{
+		return log_sink_;
 	}
 
 	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const

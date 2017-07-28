@@ -58,6 +58,8 @@ int main(int argc, char** argv)
 	SLOG(INFO) << "SLOG(INFO)\n";
 	/// Log with explicit "special" type
 	LOG(INFO) << LogType::special << "LOG(INFO) << LogType::special\n";
+	/// Log with explicit "special" type (now with a macro)
+	LOG(INFO) << SPECIAL << "LOG(INFO) << SPECIAL\n";
 	/// ... with explicit "special" type and explicit tag
 	LOG(INFO) << LogType::special << TAG("guten tag") << "LOG(INFO) << LogType::special << TAG(\"guten tag\")\n";
 
