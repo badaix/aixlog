@@ -40,9 +40,9 @@ int main(int argc, char** argv)
 			/// Callback log sink with cout logging in a lambda function
 			/// Could also do file logging
 			make_shared<LogSinkCallback>(LogSeverity::trace, LogSink::Type::all, 
-				[](const time_point_sys_clock& timestamp, LogSeverity priority, LogType type, const Tag& tag, const std::string& message)
+				[](const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message)
 				{
-					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tprio: " << Log::toString(priority) << " (" << (int)priority << ")\n\ttype: " << (type == LogType::normal?"normal":"special") << "\n";
+					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tseverity: " << Log::toString(severity) << " (" << (int)severity << ")\n\ttype: " << (type == LogType::normal?"normal":"special") << "\n";
 				}
 			)
 		}

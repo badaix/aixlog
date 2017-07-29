@@ -227,7 +227,7 @@ struct LogSink
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const = 0;
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const = 0;
 	virtual Type get_type() const
 	{
 		return sink_type_;
@@ -267,6 +267,8 @@ public:
 	/// Without "init" every LOG(X) will simply go to clog
 	static void init(const std::vector<log_sink_ptr> log_sinks = {})
 	{
+		Log::instance().log_sinks_.clear();
+
 		for (auto sink: log_sinks)
 			Log::instance().add_logsink(sink);
 
@@ -275,12 +277,12 @@ public:
 
 	void add_logsink(log_sink_ptr sink)
 	{
-		logSinks.push_back(sink);
+		log_sinks_.push_back(sink);
 	}
 
 	void remove_logsink(log_sink_ptr sink)
 	{
-		logSinks.erase(std::remove(logSinks.begin(), logSinks.end(), sink), logSinks.end());
+		log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
 	}
 
 	static std::string toString(LogSeverity logSeverity)
@@ -321,7 +323,7 @@ protected:
 			auto now = std::chrono::system_clock::now();
 			if (conditional_.is_true())
 			{
-				for (const auto sink: logSinks)
+				for (const auto sink: log_sinks_)
 				{
 					if (
 							(sink->get_type() == LogSink::Type::all) ||
@@ -375,7 +377,7 @@ private:
 	LogType type_;
 	Tag tag_;
 	Conditional conditional_;
-	std::vector<log_sink_ptr> logSinks;
+	std::vector<log_sink_ptr> log_sinks_;
 };
 
 
@@ -393,12 +395,12 @@ struct LogSinkFormat : public LogSink
 		format_ = format;
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const = 0;
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const = 0;
 
 
 protected:
 	/// strftime format + proprietary "#ms" for milliseconds
-	virtual void do_log(std::ostream& stream, const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void do_log(std::ostream& stream, const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
 		struct::tm now_tm = *std::localtime(&now_c);
@@ -451,7 +453,7 @@ struct LogSinkCout : public LogSinkFormat
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 		if (severity >= this->severity)
 			do_log(std::cout, timestamp, severity, type, tag, message);
@@ -467,7 +469,7 @@ struct LogSinkCerr : public LogSinkFormat
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 		if (severity >= this->severity)
 			do_log(std::cerr, timestamp, severity, type, tag, message);
@@ -483,7 +485,7 @@ struct LogSinkOutputDebugString : LogSink
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 #ifdef _WIN32
 		OutputDebugString(message.c_str());
@@ -523,7 +525,7 @@ struct LogSinkUnifiedLogging : LogSink
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 #ifdef __APPLE__
 		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(severity), "%{public}s", message.c_str());
@@ -575,7 +577,7 @@ struct LogSinkSyslog : public LogSink
 #endif
 
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 #ifdef _HAS_SYSLOG_
 		syslog(get_syslog_priority(severity), "%s", message.c_str());
@@ -616,7 +618,7 @@ struct LogSinkAndroid : public LogSink
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 #ifdef __ANDROID__
 		std::string log_tag;// = default_tag_;
@@ -673,7 +675,7 @@ struct LogSinkEventLog : public LogSink
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 #ifdef _WIN32
 		ReportEvent(event_log, get_type(severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
@@ -714,7 +716,7 @@ struct LogSinkNative : public LogSink
 		return log_sink_;
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 		if (log_sink_)
 			log_sink_->log(timestamp, severity, type, tag, message);
@@ -729,13 +731,13 @@ protected:
 
 struct LogSinkCallback : public LogSink
 {
-	typedef std::function<void(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message)> callback_fun;
+	typedef std::function<void(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message)> callback_fun;
 
 	LogSinkCallback(LogSeverity severity, Type type, callback_fun callback) : LogSink(severity, type), callback(callback)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, LogSeverity severity, LogType type, const Tag& tag, const std::string& message) const
+	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const
 	{
 		if (callback && (severity >= this->severity))
 			callback(timestamp, severity, type, tag, message);
