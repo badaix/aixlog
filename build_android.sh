@@ -14,5 +14,4 @@ export CXXFLAGS="-U_ARM_ASSEM_ -I$ANDROID_NDK/sysroot/usr/include -DANDROID -llo
 mkdir -p build
 cd build
 cmake ..
-make VERBOSE=1
-
+make

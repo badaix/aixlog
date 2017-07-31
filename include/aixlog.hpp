@@ -3,24 +3,14 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.8.0
+    version 0.9.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
     Copyright (C) 2017  Johannes Pohl
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    This software may be modified and distributed under the terms
+    of the MIT license.  See the LICENSE file for details.
 ***/
 
 /// inspired by "eater": 
@@ -594,7 +584,7 @@ struct LogSinkAndroid : public LogSink
 	}
 
 #ifdef __ANDROID__
-	android_LogSeverity get_android_prio(LogSeverity severity) const
+	android_LogPriority get_android_prio(LogSeverity severity) const
 	{
 		// https://developer.android.com/ndk/reference/log_8h.html
 		switch (severity)
