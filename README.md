@@ -7,6 +7,7 @@ C++ logging library
   * Simply include and use it!
   * Small code base: adapt it for your needs
   * No dependcies, just vanilla C++11
+* MIT license
 * Use ostream operator `<<`
   * easy to switch from existing "`cout` logging"
 * Fancy name
