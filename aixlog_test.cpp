@@ -47,17 +47,17 @@ int main(int argc, char** argv)
 	/// Log "special" with info prio
 	SLOG(INFO) << "SLOG(INFO)\n";
 	/// Log with explicit "special" type
-	LOG(INFO) << AixLog::Type::special << "LOG(INFO) << Type::special\n";
+	LOG(INFO) << AixLog::Type::special << "LOG(INFO) << AixLog::Type::special\n";
 	/// Log with explicit "special" type (now with a macro)
 	LOG(INFO) << SPECIAL << "LOG(INFO) << SPECIAL\n";
 	/// ... with explicit "special" type and explicit tag
-	LOG(INFO) << SPECIAL << TAG("guten tag") << "LOG(INFO) << Type::special << TAG(\"guten tag\")\n";
+	LOG(INFO) << SPECIAL << TAG("guten tag") << "LOG(INFO) << SPECIAL << TAG(\"guten tag\")\n";
 
 	/// Different log priorities
 	LOG(FATAL) << "LOG(FATAL)\nLOG(FATAL) Second line\n";
 	LOG(FATAL) << TAG("hello") << "LOG(FATAL) << TAG(\"hello\") no line break";
 	LOG(FATAL) << "LOG(FATAL) 2 no line break";
-	LOG(ERROR) << "LOG(ERROR): change in loglevel will add a line break";
+	LOG(ERROR) << "LOG(ERROR): change in log-level will add a line break";
 	LOG(WARNING) << "LOG(WARNING)";
 	LOG(NOTICE) << "LOG(NOTICE)";
 	LOG(INFO) << "LOG(INFO)\n";
