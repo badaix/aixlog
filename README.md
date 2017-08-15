@@ -11,15 +11,15 @@ C++ logging library
 * Use ostream operator `<<`
   * easy to switch from existing "`cout` logging"
 * Fancy name
-* Native support for various platforms (through LogSinks)
+* Native support for various platforms (through Sinks)
   * Linux, Unix: Syslog
   * macOS: Unified logging (os_log)
   * Android: Android Log
   * Windows: Event log, OutputDebugString
-* Several LogSinks:
+* Several Sinks:
   * cout
   * cerr
-  * LogSink with custom callback function
+  * Sink with custom callback function
     * implement your own log sink in a lambda with a single line of code
   * Easy to add more...
 * Manipulators for
@@ -47,16 +47,16 @@ int main(int argc, char** argv)
 {
 	Log::init(
 		{
-			/// Log normal (i.e. non-special) logs to LogSinkCout
-			make_shared<LogSinkCout>(LogSeverity::trace, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
+			/// Log normal (i.e. non-special) logs to SinkCout
+			make_shared<SinkCout>(Severity::trace, Sink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			/// Log error and higher prio messages to cerr
-			make_shared<LogSinkCerr>(LogSeverity::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
+			make_shared<SinkCerr>(Severity::error, Sink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
 			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
-			make_shared<LogSinkNative>("aixlog", LogSeverity::trace, LogSink::Type::special),
+			make_shared<SinkNative>("aixlog", Severity::trace, Sink::Type::special),
 			/// Callback log sink with cout logging in a lambda function
 			/// Could also do file logging
-			make_shared<LogSinkCallback>(LogSeverity::trace, LogSink::Type::all, 
-				[](const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message)
+			make_shared<SinkCallback>(Severity::trace, Sink::Type::all, 
+				[](const time_point_sys_clock& timestamp, const Severity& severity, const LogType& type, const Tag& tag, const std::string& message)
 				{
 					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tseverity: " << Log::toString(severity) << " (" << (int)severity << ")\n\ttype: " << (type == LogType::normal?"normal":"special") << "\n";
 				}
@@ -97,6 +97,6 @@ int main(int argc, char** argv)
 
 	/// Colors :-)
 	LOG(FATAL) << "LOG(FATAL) " << Color::red << "red" << Color::none << " default color\n";
-	LOG(FATAL) << "LOG(FATAL) " << LogColor(Color::yellow, Color::blue) << "yellow on blue background" << Color::none << " default color\n";
+	LOG(FATAL) << "LOG(FATAL) " << TextColor(Color::yellow, Color::blue) << "yellow on blue background" << Color::none << " default color\n";
 }
 ```
