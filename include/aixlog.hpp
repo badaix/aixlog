@@ -69,13 +69,6 @@
 #define SPECIAL LogType::special
 
 
-enum class LogType
-{
-	normal,
-	special
-};
-
-
 enum Severity
 {
 // https://chromium.googlesource.com/chromium/mini_chromium/+/master/base/logging.cc
@@ -102,6 +95,18 @@ enum Severity
 	ERROR = 5,
 	FATAL = 6
 };
+
+
+//namespace AixLog
+//{
+
+enum class LogType
+{
+	normal,
+	special,
+	all
+};
+
 
 
 enum class LogSeverity : std::int8_t
@@ -202,14 +207,7 @@ typedef std::chrono::time_point<std::chrono::system_clock> time_point_sys_clock;
 
 struct LogSink
 {
-	enum class Type
-	{
-		normal,
-		special,
-		all
-	};
-
-	LogSink(LogSeverity severity, Type type) : severity(severity), sink_type_(type)
+	LogSink(LogSeverity severity, LogType type) : severity(severity), sink_type_(type)
 	{
 	}
 
@@ -218,12 +216,12 @@ struct LogSink
 	}
 
 	virtual void log(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message) const = 0;
-	virtual Type get_type() const
+	virtual LogType get_type() const
 	{
 		return sink_type_;
 	}
 
-	virtual LogSink& set_type(Type sink_type)
+	virtual LogSink& set_type(LogType sink_type)
 	{
 		sink_type_ = sink_type;
 		return *this;
@@ -232,7 +230,7 @@ struct LogSink
 	LogSeverity severity;
 
 protected:
-	Type sink_type_;
+	LogType sink_type_;
 };
 
 
@@ -316,9 +314,10 @@ protected:
 				for (const auto sink: log_sinks_)
 				{
 					if (
-							(sink->get_type() == LogSink::Type::all) ||
-							((type_ == LogType::special) && (sink->get_type() == LogSink::Type::special)) ||
-							((type_ == LogType::normal) && (sink->get_type() == LogSink::Type::normal))
+							(type_ == LogType::all) ||
+							(sink->get_type() == LogType::all) ||
+							((type_ == LogType::special) && (sink->get_type() == LogType::special)) ||
+							((type_ == LogType::normal) && (sink->get_type() == LogType::normal))
 					)
 						if (severity_ >= sink->severity)
 							sink->log(now, severity_, type_, tag_, buffer_.str());
@@ -374,7 +373,7 @@ private:
 
 struct LogSinkFormat : public LogSink
 {
-	LogSinkFormat(LogSeverity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag)") : // #logline") : 
+	LogSinkFormat(LogSeverity severity, LogType type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag)") : // #logline") : 
 		LogSink(severity, type), 
 		format_(format)
 	{
@@ -438,7 +437,7 @@ protected:
 
 struct LogSinkCout : public LogSinkFormat
 {
-	LogSinkCout(LogSeverity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
+	LogSinkCout(LogSeverity severity, LogType type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
 		LogSinkFormat(severity, type, format)
 	{
 	}
@@ -454,7 +453,7 @@ struct LogSinkCout : public LogSinkFormat
 
 struct LogSinkCerr : public LogSinkFormat
 {
-	LogSinkCerr(LogSeverity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
+	LogSinkCerr(LogSeverity severity, LogType type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
 		LogSinkFormat(severity, type, format)
 	{
 	}
@@ -471,7 +470,7 @@ struct LogSinkCerr : public LogSinkFormat
 /// Not tested due to unavailability of Windows
 struct LogSinkOutputDebugString : LogSink
 {
-	LogSinkOutputDebugString(LogSeverity severity, Type type = Type::all, const std::string& default_tag = "") : LogSink(severity, type)
+	LogSinkOutputDebugString(LogSeverity severity, LogType type = LogType::all, const std::string& default_tag = "") : LogSink(severity, type)
 	{
 	}
 
@@ -487,7 +486,7 @@ struct LogSinkOutputDebugString : LogSink
 
 struct LogSinkUnifiedLogging : LogSink
 {
-	LogSinkUnifiedLogging(LogSeverity severity, Type type = Type::all) : LogSink(severity, type)
+	LogSinkUnifiedLogging(LogSeverity severity, LogType type = LogType::all) : LogSink(severity, type)
 	{
 	}
 
@@ -527,7 +526,7 @@ struct LogSinkUnifiedLogging : LogSink
 
 struct LogSinkSyslog : public LogSink
 {
-	LogSinkSyslog(const char* ident, LogSeverity severity, Type type) : LogSink(severity, type)
+	LogSinkSyslog(const char* ident, LogSeverity severity, LogType type) : LogSink(severity, type)
 	{
 #ifdef _HAS_SYSLOG_
 		openlog(ident, LOG_PID, LOG_USER);
@@ -579,7 +578,7 @@ struct LogSinkSyslog : public LogSink
 
 struct LogSinkAndroid : public LogSink
 {
-	LogSinkAndroid(const std::string& ident, LogSeverity severity, Type type = Type::all) : LogSink(severity, type), ident_(ident)
+	LogSinkAndroid(const std::string& ident, LogSeverity severity, LogType type = LogType::all) : LogSink(severity, type), ident_(ident)
 	{
 	}
 
@@ -635,7 +634,7 @@ protected:
 /// Not tested due to unavailability of Windows
 struct LogSinkEventLog : public LogSink
 {
-	LogSinkEventLog(const std::string& ident, LogSeverity severity, Type type = Type::all) : LogSink(severity, type)
+	LogSinkEventLog(const std::string& ident, LogSeverity severity, LogType type = LogType::all) : LogSink(severity, type)
 	{
 #ifdef _WIN32
 		event_log = RegisterEventSource(NULL, ident.c_str());
@@ -682,7 +681,7 @@ protected:
 
 struct LogSinkNative : public LogSink
 {
-	LogSinkNative(const std::string& ident, LogSeverity severity, Type type = Type::all) : 
+	LogSinkNative(const std::string& ident, LogSeverity severity, LogType type = LogType::all) : 
 		LogSink(severity, type), 
 		log_sink_(nullptr), 
 		ident_(ident)
@@ -723,7 +722,7 @@ struct LogSinkCallback : public LogSink
 {
 	typedef std::function<void(const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message)> callback_fun;
 
-	LogSinkCallback(LogSeverity severity, Type type, callback_fun callback) : LogSink(severity, type), callback(callback)
+	LogSinkCallback(LogSeverity severity, LogType type, callback_fun callback) : LogSink(severity, type), callback(callback)
 	{
 	}
 
@@ -809,6 +808,8 @@ static std::ostream& operator<< (std::ostream& os, const Color& color)
 	return os;
 }
 
+
+//}
 
 
 #endif /// AIX_LOG_HPP

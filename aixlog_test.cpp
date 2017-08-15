@@ -22,14 +22,14 @@ int main(int argc, char** argv)
 	Log::init(
 		{
 			/// Log normal (i.e. non-special) logs to LogSinkCout
-			make_shared<LogSinkCout>(LogSeverity::trace, LogSink::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
+			make_shared<LogSinkCout>(LogSeverity::trace, LogType::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag) #logline"),
 			/// Log error and higher prio messages to cerr
-			make_shared<LogSinkCerr>(LogSeverity::error, LogSink::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
+			make_shared<LogSinkCerr>(LogSeverity::error, LogType::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)"),
 			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
-			make_shared<LogSinkNative>("aixlog", LogSeverity::trace, LogSink::Type::special),
+			make_shared<LogSinkNative>("aixlog", LogSeverity::trace, LogType::special),
 			/// Callback log sink with cout logging in a lambda function
 			/// Could also do file logging
-			make_shared<LogSinkCallback>(LogSeverity::trace, LogSink::Type::all, 
+			make_shared<LogSinkCallback>(LogSeverity::trace, LogType::all, 
 				[](const time_point_sys_clock& timestamp, const LogSeverity& severity, const LogType& type, const Tag& tag, const std::string& message)
 				{
 					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tseverity: " << Log::toString(severity) << " (" << (int)severity << ")\n\ttype: " << (type == LogType::normal?"normal":"special") << "\n";
