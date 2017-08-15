@@ -375,7 +375,7 @@ private:
 
 struct SinkFormat : public Sink
 {
-	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#prio] (#tag)") : // #logline") : 
+	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag)") : // #logline") : 
 		Sink(severity, type), 
 		format_(format)
 	{
@@ -408,9 +408,9 @@ protected:
 			result.replace(pos, 3, ms_str);
 		}
 
-		pos = result.find("#prio");
+		pos = result.find("#severity");
 		if (pos != std::string::npos)
-			result.replace(pos, 5, Log::toString(severity));
+			result.replace(pos, 9, Log::toString(severity));
 
 
 		pos = result.find("#tag");
@@ -439,7 +439,7 @@ protected:
 
 struct SinkCout : public SinkFormat
 {
-	SinkCout(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
+	SinkCout(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") : // #logline") :
 		SinkFormat(severity, type, format)
 	{
 	}
@@ -455,7 +455,7 @@ struct SinkCout : public SinkFormat
 
 struct SinkCerr : public SinkFormat
 {
-	SinkCerr(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#prio] (#tag)") : // #logline") :
+	SinkCerr(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") : // #logline") :
 		SinkFormat(severity, type, format)
 	{
 	}
