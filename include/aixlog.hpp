@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.10.0
+    version 0.11.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -50,18 +50,18 @@
 
 /// Internal helper defines
 #define LOG_WO_TAG(P) std::clog << (AixLog::Severity)P << TAG(__func__)
-#define SLOG_WO_TAG(P) std::clog << (AixLog::Severity)P << TAG(__func__) << SPECIAL
-
 #define LOG_TAG(P, T) std::clog << (AixLog::Severity)P << TAG(T)
-#define SLOG_TAG(P, T) std::clog << (AixLog::Severity)P << TAG(T) << SPECIAL
 
-#define LOG_X(x,P,T,FUNC, ...)  FUNC
-#define SLOG_X(x,P,T,FUNC, ...)  FUNC
+#define ONE_COLOR(FG) AixLog::Color::FG
+#define TWO_COLOR(FG, BG) AixLog::TextColor(AixLog::Color::FG, AixLog::Color::BG)
+
+#define VAR_PARM(x,P,T,FUNC, ...)  FUNC
 
 
 /// External logger defines
-#define LOG(...) LOG_X(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
-#define SLOG(...) SLOG_X(,##__VA_ARGS__, SLOG_TAG(__VA_ARGS__), SLOG_WO_TAG(__VA_ARGS__))
+#define LOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
+#define SLOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__)) << SPECIAL
+#define COLOR(...) VAR_PARM(,##__VA_ARGS__, TWO_COLOR(__VA_ARGS__), ONE_COLOR(__VA_ARGS__))
 
 #define FUNC __func__
 #define TAG AixLog::Tag
