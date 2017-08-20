@@ -180,7 +180,7 @@ private:
 
 struct Tag
 {
-	Tag(std::nullptr_t) : tag(""), is_null(true)
+	Tag(std::nullptr_t) : tag(""), is_null_(true)
 	{
 	}
 
@@ -188,19 +188,19 @@ struct Tag
 	{
 	}
 
-	Tag(const std::string& tag) : tag(tag), is_null(false)
+	Tag(const std::string& tag) : tag(tag), is_null_(false)
 	{
 	}
 
 	virtual explicit operator bool() const
 	{
-		return !is_null;
+		return !is_null_;
 	}
 
 	std::string tag;
 
 private:
-	bool is_null;
+	bool is_null_;
 };
 
 
@@ -724,18 +724,18 @@ struct SinkCallback : public Sink
 {
 	typedef std::function<void(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message)> callback_fun;
 
-	SinkCallback(Severity severity, Type type, callback_fun callback) : Sink(severity, type), callback(callback)
+	SinkCallback(Severity severity, Type type, callback_fun callback) : Sink(severity, type), callback_(callback)
 	{
 	}
 
 	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
 	{
-		if (callback && (severity >= this->severity))
-			callback(timestamp, severity, type, tag, message);
+		if (callback_ && (severity >= this->severity))
+			callback_(timestamp, severity, type, tag, message);
 	}
 
 private:
-	callback_fun callback;
+	callback_fun callback_;
 };
 
 
