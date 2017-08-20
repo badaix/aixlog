@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.11.0
+    version 0.12.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -16,7 +16,6 @@
 /// inspired by "eater": 
 /// https://stackoverflow.com/questions/2638654/redirect-c-stdclog-to-syslog-on-unix
 
-/// TODO: add global log level
 
 
 #ifndef AIX_LOG_HPP
@@ -55,15 +54,16 @@
 #define ONE_COLOR(FG) AixLog::Color::FG
 #define TWO_COLOR(FG, BG) AixLog::TextColor(AixLog::Color::FG, AixLog::Color::BG)
 
-#define VAR_PARM(x,P,T,FUNC, ...)  FUNC
+#define VAR_PARM(x,P,T,FUN, ...) FUN
 
 
 /// External logger defines
 #define LOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
 #define SLOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__)) << SPECIAL
+#define FLOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__)) << FUNC
 #define COLOR(...) VAR_PARM(,##__VA_ARGS__, TWO_COLOR(__VA_ARGS__), ONE_COLOR(__VA_ARGS__))
 
-#define FUNC __func__
+#define FUNC AixLog::Function(__func__, __FILE__, __LINE__)
 #define TAG AixLog::Tag
 #define COND AixLog::Conditional
 #define SPECIAL AixLog::Type::special
@@ -206,6 +206,53 @@ private:
 
 typedef std::chrono::time_point<std::chrono::system_clock> time_point_sys_clock;
 
+
+
+struct Function
+{
+	Function(const std::string& name, const std::string& file, size_t line) :
+		name(name), file(file), line(line), is_null_(false)
+	{
+	}
+
+	Function(std::nullptr_t) : name(""), file(""), line(0), is_null_(true)
+	{
+	}
+
+	Function() : Function(nullptr)
+	{
+	}
+
+	virtual explicit operator bool() const
+	{
+		return !is_null_;
+	}
+
+	std::string name;
+	std::string file;
+	size_t line;
+
+private:
+	bool is_null_;
+};
+
+
+
+struct Metadata
+{
+	Metadata() : severity(Severity::trace), tag(nullptr), type(Type::normal)
+	{
+	}
+
+	Severity severity;
+	Tag tag;
+	Type type;
+	Function function;
+	time_point_sys_clock timestamp;
+};
+
+
+
 struct Sink
 {
 	Sink(Severity severity, Type type) : severity(severity), sink_type_(type)
@@ -216,7 +263,7 @@ struct Sink
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const = 0;
+	virtual void log(const Metadata& metadata, const std::string& message) const = 0;
 	virtual Type get_type() const
 	{
 		return sink_type_;
@@ -239,6 +286,7 @@ protected:
 static std::ostream& operator<< (std::ostream& os, const Severity& log_severity);
 static std::ostream& operator<< (std::ostream& os, const Type& log_type);
 static std::ostream& operator<< (std::ostream& os, const Tag& tag);
+static std::ostream& operator<< (std::ostream& os, const Function& function);
 static std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
 
 typedef std::shared_ptr<Sink> log_sink_ptr;
@@ -274,7 +322,7 @@ public:
 		log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
 	}
 
-	static std::string toString(Severity logSeverity)
+	static std::string to_string(Severity logSeverity)
 	{
 		switch (logSeverity)
 		{
@@ -301,7 +349,7 @@ public:
 
 
 protected:
-	Log() :	type_(Type::normal)
+	Log()
 	{
 	}
 
@@ -309,27 +357,28 @@ protected:
 	{
 		if (!buffer_.str().empty())
 		{
-			auto now = std::chrono::system_clock::now();
+			metadata_.timestamp = std::chrono::system_clock::now();
 			if (conditional_.is_true())
 			{
 				for (const auto sink: log_sinks_)
 				{
 					if (
-							(type_ == Type::all) ||
+							(metadata_.type == Type::all) ||
 							(sink->get_type() == Type::all) ||
-							((type_ == Type::special) && (sink->get_type() == Type::special)) ||
-							((type_ == Type::normal) && (sink->get_type() == Type::normal))
+							((metadata_.type == Type::special) && (sink->get_type() == Type::special)) ||
+							((metadata_.type == Type::normal) && (sink->get_type() == Type::normal))
 					)
-						if (severity_ >= sink->severity)
-							sink->log(now, severity_, type_, tag_, buffer_.str());
+						if (metadata_.severity >= sink->severity)
+							sink->log(metadata_, buffer_.str());
 				}
 			}
 			buffer_.str("");
 			buffer_.clear();
 			//severity_ = debug; // default to debug for each message
 			//type_ = kNormal;
-			type_ = Type::normal;
-			tag_ = nullptr;
+			metadata_.type = Type::normal;
+			metadata_.tag = nullptr;
+			metadata_.function = nullptr;
 			conditional_.set(true);
 		}
 		return 0;
@@ -361,12 +410,11 @@ private:
 	friend std::ostream& operator<< (std::ostream& os, const Severity& log_severity);
 	friend std::ostream& operator<< (std::ostream& os, const Type& log_type);
 	friend std::ostream& operator<< (std::ostream& os, const Tag& tag);
+	friend std::ostream& operator<< (std::ostream& os, const Function& function);
 	friend std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
 
 	std::stringstream buffer_;
-	Severity severity_;
-	Type type_;
-	Tag tag_;
+	Metadata metadata_;
 	Conditional conditional_;
 	std::vector<log_sink_ptr> log_sinks_;
 };
@@ -375,7 +423,7 @@ private:
 
 struct SinkFormat : public Sink
 {
-	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag)") : // #logline") : 
+	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag)") :
 		Sink(severity, type), 
 		format_(format)
 	{
@@ -386,14 +434,14 @@ struct SinkFormat : public Sink
 		format_ = format;
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const = 0;
+	virtual void log(const Metadata& metadata, const std::string& message) const = 0;
 
 
 protected:
 	/// strftime format + proprietary "#ms" for milliseconds
-	virtual void do_log(std::ostream& stream, const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void do_log(std::ostream& stream, const Metadata& metadata, const std::string& message) const
 	{
-		std::time_t now_c = std::chrono::system_clock::to_time_t(timestamp);
+		std::time_t now_c = std::chrono::system_clock::to_time_t(metadata.timestamp);
 		struct::tm now_tm = *std::localtime(&now_c);
 
 		char buffer[256];
@@ -402,7 +450,7 @@ protected:
 		size_t pos = result.find("#ms");
 		if (pos != std::string::npos)
 		{
-			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(timestamp).time_since_epoch().count() % 1000;
+			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(metadata.timestamp).time_since_epoch().count() % 1000;
 			char ms_str[4];
 			sprintf(ms_str, "%03d", ms_part);
 			result.replace(pos, 3, ms_str);
@@ -410,14 +458,13 @@ protected:
 
 		pos = result.find("#severity");
 		if (pos != std::string::npos)
-			result.replace(pos, 9, Log::toString(severity));
-
+			result.replace(pos, 9, Log::to_string(metadata.severity));
 
 		pos = result.find("#tag");
 		if (pos != std::string::npos)
-			result.replace(pos, 4, tag?tag.tag:"log");
+			result.replace(pos, 4, metadata.tag?metadata.tag.tag:"log");
 
-		pos = result.find("#logline");
+		pos = result.find("#message");
 		if (pos != std::string::npos)
 		{
 			result.replace(pos, 8, message);
@@ -439,15 +486,15 @@ protected:
 
 struct SinkCout : public SinkFormat
 {
-	SinkCout(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") : // #logline") :
+	SinkCout(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") :
 		SinkFormat(severity, type, format)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 		if (severity >= this->severity)
-			do_log(std::cout, timestamp, severity, type, tag, message);
+			do_log(std::cout, metadata, message);
 	}
 };
 
@@ -455,15 +502,15 @@ struct SinkCout : public SinkFormat
 
 struct SinkCerr : public SinkFormat
 {
-	SinkCerr(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") : // #logline") :
+	SinkCerr(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") :
 		SinkFormat(severity, type, format)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 		if (severity >= this->severity)
-			do_log(std::cerr, timestamp, severity, type, tag, message);
+			do_log(std::cerr, metadata, message);
 	}
 };
 
@@ -476,7 +523,7 @@ struct SinkOutputDebugString : Sink
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 #ifdef _WIN32
 		OutputDebugString(message.c_str());
@@ -516,10 +563,10 @@ struct SinkUnifiedLogging : Sink
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 #ifdef __APPLE__
-		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(severity), "%{public}s", message.c_str());
+		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(metadata.severity), "%{public}s", message.c_str());
 #endif
 	}
 };
@@ -568,10 +615,10 @@ struct SinkSyslog : public Sink
 #endif
 
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 #ifdef _HAS_SYSLOG_
-		syslog(get_syslog_priority(severity), "%s", message.c_str());
+		syslog(get_syslog_priority(metadata.severity), "%s", message.c_str());
 #endif
 	}
 };
@@ -609,21 +656,21 @@ struct SinkAndroid : public Sink
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 #ifdef __ANDROID__
 		std::string log_tag;// = default_tag_;
 		if (tag)
 		{
 			if (!ident_.empty())
-				log_tag = ident_ + "." + tag.tag;
+				log_tag = ident_ + "." + metadata.tag.tag;
 			else
-				log_tag = tag.tag;
+				log_tag = metadata.tag.tag;
 		}
 		else
 			log_tag = ident_;
 
-		__android_log_write(get_android_prio(severity), log_tag.c_str(), message.c_str());
+		__android_log_write(get_android_prio(metadata.severity), log_tag.c_str(), message.c_str());
 #endif
 	}
 
@@ -666,10 +713,10 @@ struct SinkEventLog : public Sink
 	}
 #endif
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 #ifdef _WIN32
-		ReportEvent(event_log, get_type(severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
+		ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
 #endif
 	}
 
@@ -707,10 +754,10 @@ struct SinkNative : public Sink
 		return log_sink_;
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 		if (log_sink_)
-			log_sink_->log(timestamp, severity, type, tag, message);
+			log_sink_->log(metadata, message);
 	}
 
 protected:
@@ -722,16 +769,16 @@ protected:
 
 struct SinkCallback : public Sink
 {
-	typedef std::function<void(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message)> callback_fun;
+	typedef std::function<void(const Metadata& metadata, const std::string& message)> callback_fun;
 
 	SinkCallback(Severity severity, Type type, callback_fun callback) : Sink(severity, type), callback_(callback)
 	{
 	}
 
-	virtual void log(const time_point_sys_clock& timestamp, const Severity& severity, const Type& type, const Tag& tag, const std::string& message) const
+	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 		if (callback_ && (severity >= this->severity))
-			callback_(timestamp, severity, type, tag, message);
+			callback_(metadata, message);
 	}
 
 private:
@@ -743,10 +790,10 @@ private:
 static std::ostream& operator<< (std::ostream& os, const Severity& log_severity)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log && (log->severity_ != log_severity))
+	if (log && (log->metadata_.severity != log_severity))
 	{
 		log->sync();
-		log->severity_ = log_severity;
+		log->metadata_.severity = log_severity;
 	}
 	return os;
 }
@@ -757,7 +804,7 @@ static std::ostream& operator<< (std::ostream& os, const Type& log_type)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
-		log->type_ = log_type;
+		log->metadata_.type = log_type;
 	return os;
 }
 
@@ -767,7 +814,17 @@ static std::ostream& operator<< (std::ostream& os, const Tag& tag)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
-		log->tag_ = tag;
+		log->metadata_.tag = tag;
+	return os;
+}
+
+
+
+static std::ostream& operator<< (std::ostream& os, const Function& function)
+{
+	Log* log = dynamic_cast<Log*>(os.rdbuf());
+	if (log)
+		log->metadata_.function = function;
 	return os;
 }
 

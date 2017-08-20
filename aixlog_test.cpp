@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 	AixLog::Log::init(
 		{
 			/// Log normal (i.e. non-special) logs to SinkCout
-			make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #logline"),
+			make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #message"),
 			/// Log error and higher severity messages to cerr
 			make_shared<AixLog::SinkCerr>(AixLog::Severity::error, AixLog::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)"),
 			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
@@ -30,9 +30,11 @@ int main(int argc, char** argv)
 			/// Callback log sink with cout logging in a lambda function
 			/// Could also do file logging
 			make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
-				[](const AixLog::time_point_sys_clock& timestamp, const AixLog::Severity& severity, const AixLog::Type& type, const AixLog::Tag& tag, const std::string& message)
+				[](const AixLog::Metadata& metadata, const std::string& message)
 				{
-					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tseverity: " << AixLog::Log::toString(severity) << " (" << (int)severity << ")\n\ttype: " << (type == AixLog::Type::normal?"normal":"special") << "\n";
+					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.tag << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+					if (metadata.function)
+						cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
 				}
 			)
 		}
@@ -68,6 +70,11 @@ int main(int argc, char** argv)
 	/// Conditional logging
 	LOG(DEBUG) << COND(1 == 1) << "LOG(DEBUG) will be logged\n";
 	LOG(DEBUG) << COND(1 == 2) << "LOG(DEBUG) will not be logged\n";
+
+	/// Log function details with explicit FUNC macro
+	LOG(TRACE) << FUNC << "LOG(TRACE) << FUNC\n";
+	/// Log function details with FLOG
+	FLOG(TRACE) << "FLOG(TRACE)\n";
 
 	/// Colors :-)
 	LOG(FATAL) << "LOG(FATAL) " << AixLog::Color::red << "red" << AixLog::Color::none << ", default color\n";
