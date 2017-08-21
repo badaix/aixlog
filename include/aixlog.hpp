@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.12.0
+    version 0.12.1
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -660,7 +660,7 @@ struct SinkAndroid : public Sink
 	{
 #ifdef __ANDROID__
 		std::string log_tag;// = default_tag_;
-		if (tag)
+		if (metadata.tag)
 		{
 			if (!ident_.empty())
 				log_tag = ident_ + "." + metadata.tag.tag;
