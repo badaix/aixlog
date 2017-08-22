@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 			make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
 				[](const AixLog::Metadata& metadata, const std::string& message)
 				{
-					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.tag << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
 					if (metadata.function)
 						cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
 				}
@@ -70,11 +70,6 @@ int main(int argc, char** argv)
 	/// Conditional logging
 	LOG(DEBUG) << COND(1 == 1) << "LOG(DEBUG) will be logged\n";
 	LOG(DEBUG) << COND(1 == 2) << "LOG(DEBUG) will not be logged\n";
-
-	/// Log function details with explicit FUNC macro
-	LOG(TRACE) << FUNC << "LOG(TRACE) << FUNC\n";
-	/// Log function details with FLOG
-	FLOG(TRACE) << "FLOG(TRACE)\n";
 
 	/// Colors :-)
 	LOG(FATAL) << "LOG(FATAL) " << AixLog::Color::red << "red" << AixLog::Color::none << ", default color\n";

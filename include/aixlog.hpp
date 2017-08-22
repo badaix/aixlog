@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.12.1
+    version 0.13.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -48,7 +48,7 @@
 
 
 /// Internal helper defines
-#define LOG_WO_TAG(P) std::clog << (AixLog::Severity)P << TAG(__func__)
+#define LOG_WO_TAG(P) std::clog << (AixLog::Severity)P
 #define LOG_TAG(P, T) std::clog << (AixLog::Severity)P << TAG(T)
 
 #define ONE_COLOR(FG) AixLog::Color::FG
@@ -58,15 +58,15 @@
 
 
 /// External logger defines
-#define LOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__))
-#define SLOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__)) << SPECIAL
-#define FLOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__)) << FUNC
+#define LOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__)) << TIMESTAMP << FUNC
+#define SLOG(...) VAR_PARM(,##__VA_ARGS__, LOG_TAG(__VA_ARGS__), LOG_WO_TAG(__VA_ARGS__)) << TIMESTAMP << SPECIAL << FUNC
 #define COLOR(...) VAR_PARM(,##__VA_ARGS__, TWO_COLOR(__VA_ARGS__), ONE_COLOR(__VA_ARGS__))
 
 #define FUNC AixLog::Function(__func__, __FILE__, __LINE__)
 #define TAG AixLog::Tag
 #define COND AixLog::Conditional
 #define SPECIAL AixLog::Type::special
+#define TIMESTAMP AixLog::Timestamp(std::chrono::system_clock::now())
 
 
 enum SEVERITY
@@ -178,17 +178,19 @@ private:
 
 
 
-struct Tag
+struct Timestamp
 {
-	Tag(std::nullptr_t) : tag(""), is_null_(true)
+	typedef std::chrono::time_point<std::chrono::system_clock> time_point_sys_clock;
+
+	Timestamp(std::nullptr_t) : is_null_(true)
 	{
 	}
 
-	Tag() : Tag(nullptr)
+	Timestamp() : Timestamp(nullptr)
 	{
 	}
 
-	Tag(const std::string& tag) : tag(tag), is_null_(false)
+	Timestamp(const time_point_sys_clock& time_point) : time_point(time_point), is_null_(false)
 	{
 	}
 
@@ -197,14 +199,58 @@ struct Tag
 		return !is_null_;
 	}
 
-	std::string tag;
+	/// strftime format + proprietary "#ms" for milliseconds
+	std::string to_string(const std::string& format = "%Y-%m-%d %H-%M-%S.#ms") const
+	{
+		std::time_t now_c = std::chrono::system_clock::to_time_t(time_point);
+		struct::tm now_tm = *std::localtime(&now_c);
+
+		char buffer[256];
+		strftime(buffer, sizeof buffer, format.c_str(), &now_tm);
+		std::string result = buffer;
+		size_t pos = result.find("#ms");
+		if (pos != std::string::npos)
+		{
+			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(time_point).time_since_epoch().count() % 1000;
+			char ms_str[4];
+			sprintf(ms_str, "%03d", ms_part);
+			result.replace(pos, 3, ms_str);
+		}
+		return result;
+	}
+
+	time_point_sys_clock time_point;
 
 private:
 	bool is_null_;
 };
 
 
-typedef std::chrono::time_point<std::chrono::system_clock> time_point_sys_clock;
+
+struct Tag
+{
+	Tag(std::nullptr_t) : text(""), is_null_(true)
+	{
+	}
+
+	Tag() : Tag(nullptr)
+	{
+	}
+
+	Tag(const std::string& text) : text(text), is_null_(false)
+	{
+	}
+
+	virtual explicit operator bool() const
+	{
+		return !is_null_;
+	}
+
+	std::string text;
+
+private:
+	bool is_null_;
+};
 
 
 
@@ -240,7 +286,8 @@ private:
 
 struct Metadata
 {
-	Metadata() : severity(Severity::trace), tag(nullptr), type(Type::normal)
+	Metadata() : 
+		severity(Severity::trace), tag(nullptr), type(Type::normal), function(nullptr), timestamp(nullptr)
 	{
 	}
 
@@ -248,7 +295,7 @@ struct Metadata
 	Tag tag;
 	Type type;
 	Function function;
-	time_point_sys_clock timestamp;
+	Timestamp timestamp;
 };
 
 
@@ -285,6 +332,7 @@ protected:
 
 static std::ostream& operator<< (std::ostream& os, const Severity& log_severity);
 static std::ostream& operator<< (std::ostream& os, const Type& log_type);
+static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp);
 static std::ostream& operator<< (std::ostream& os, const Tag& tag);
 static std::ostream& operator<< (std::ostream& os, const Function& function);
 static std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
@@ -357,7 +405,6 @@ protected:
 	{
 		if (!buffer_.str().empty())
 		{
-			metadata_.timestamp = std::chrono::system_clock::now();
 			if (conditional_.is_true())
 			{
 				for (const auto sink: log_sinks_)
@@ -374,9 +421,9 @@ protected:
 			}
 			buffer_.str("");
 			buffer_.clear();
-			//severity_ = debug; // default to debug for each message
-			//type_ = kNormal;
+			metadata_.severity = Severity::trace;
 			metadata_.type = Type::normal;
+			metadata_.timestamp = nullptr;
 			metadata_.tag = nullptr;
 			metadata_.function = nullptr;
 			conditional_.set(true);
@@ -409,6 +456,7 @@ protected:
 private:
 	friend std::ostream& operator<< (std::ostream& os, const Severity& log_severity);
 	friend std::ostream& operator<< (std::ostream& os, const Type& log_type);
+	friend std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp);
 	friend std::ostream& operator<< (std::ostream& os, const Tag& tag);
 	friend std::ostream& operator<< (std::ostream& os, const Function& function);
 	friend std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
@@ -438,31 +486,23 @@ struct SinkFormat : public Sink
 
 
 protected:
-	/// strftime format + proprietary "#ms" for milliseconds
 	virtual void do_log(std::ostream& stream, const Metadata& metadata, const std::string& message) const
 	{
-		std::time_t now_c = std::chrono::system_clock::to_time_t(metadata.timestamp);
-		struct::tm now_tm = *std::localtime(&now_c);
+		std::string result = format_;
+		if (metadata.timestamp)
+			result = metadata.timestamp.to_string(result);
 
-		char buffer[256];
-		strftime(buffer, sizeof buffer, format_.c_str(), &now_tm);
-		std::string result = buffer;
-		size_t pos = result.find("#ms");
-		if (pos != std::string::npos)
-		{
-			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(metadata.timestamp).time_since_epoch().count() % 1000;
-			char ms_str[4];
-			sprintf(ms_str, "%03d", ms_part);
-			result.replace(pos, 3, ms_str);
-		}
-
-		pos = result.find("#severity");
+		size_t pos = result.find("#severity");
 		if (pos != std::string::npos)
 			result.replace(pos, 9, Log::to_string(metadata.severity));
 
 		pos = result.find("#tag");
 		if (pos != std::string::npos)
-			result.replace(pos, 4, metadata.tag?metadata.tag.tag:"log");
+			result.replace(pos, 4, metadata.tag?metadata.tag.text:(metadata.function?metadata.function.name:"log"));
+
+		pos = result.find("#function");
+		if (pos != std::string::npos)
+			result.replace(pos, 9, metadata.function?metadata.function.name:"");
 
 		pos = result.find("#message");
 		if (pos != std::string::npos)
@@ -659,17 +699,17 @@ struct SinkAndroid : public Sink
 	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
 #ifdef __ANDROID__
-		std::string log_tag;// = default_tag_;
-		if (metadata.tag)
-		{
-			if (!ident_.empty())
-				log_tag = ident_ + "." + metadata.tag.tag;
-			else
-				log_tag = metadata.tag.tag;
-		}
-		else
+		std::string tag = metadata.tag?metadata.tag.text:(metadata.function?metadata.function.name:"");
+		std::string log_tag;
+		if (!ident_.empty() && !tag.empty())
+			log_tag = ident_ + "." + tag;
+		else if (!ident_.empty())
 			log_tag = ident_;
-
+		else if (!tag.empty())
+			log_tag = tag;
+		else
+			log_tag = "log";
+			
 		__android_log_write(get_android_prio(metadata.severity), log_tag.c_str(), message.c_str());
 #endif
 	}
@@ -805,6 +845,16 @@ static std::ostream& operator<< (std::ostream& os, const Type& log_type)
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
 		log->metadata_.type = log_type;
+	return os;
+}
+
+
+
+static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp)
+{
+	Log* log = dynamic_cast<Log*>(os.rdbuf());
+	if (log)
+		log->metadata_.timestamp = timestamp;
 	return os;
 }
 
