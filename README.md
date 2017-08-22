@@ -33,6 +33,7 @@ C++ logging library
     `LOG(INFO, "my tag") << "some message"`  
     ...is the same as...  
     `LOG(INFO) << TAG("my tag") << "some message"`
+  * Capture function and line number
   * Two different log types "normal" and "special": `LOG(INFO) << SPECIAL << "some special message"`
     * special might be used for syslog, while normal is used for console output
     * => Only special tagged messages will go to syslog
@@ -51,7 +52,7 @@ int main(int argc, char** argv)
 	AixLog::Log::init(
 		{
 			/// Log normal (i.e. non-special) logs to SinkCout
-			make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #logline"),
+			make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #message"),
 			/// Log error and higher severity messages to cerr
 			make_shared<AixLog::SinkCerr>(AixLog::Severity::error, AixLog::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)"),
 			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
@@ -59,9 +60,13 @@ int main(int argc, char** argv)
 			/// Callback log sink with cout logging in a lambda function
 			/// Could also do file logging
 			make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
-				[](const AixLog::time_point_sys_clock& timestamp, const AixLog::Severity& severity, const AixLog::Type& type, const AixLog::Tag& tag, const std::string& message)
+				[](const AixLog::Metadata& metadata, const std::string& message)
 				{
-					cout << "Callback:\n\tmsg:  " << message << "\n\ttag:  " << tag.tag << "\n\tseverity: " << AixLog::Log::toString(severity) << " (" << (int)severity << ")\n\ttype: " << (type == AixLog::Type::normal?"normal":"special") << "\n";
+					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+					if (metadata.timestamp)
+						cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
+					if (metadata.function)
+						cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
 				}
 			)
 		}
