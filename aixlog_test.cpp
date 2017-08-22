@@ -33,6 +33,8 @@ int main(int argc, char** argv)
 				[](const AixLog::Metadata& metadata, const std::string& message)
 				{
 					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+					if (metadata.timestamp)
+						cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
 					if (metadata.function)
 						cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
 				}
