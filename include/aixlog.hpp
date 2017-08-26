@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.13.0
+    version 0.14.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -918,7 +918,7 @@ static std::ostream& operator<< (std::ostream& os, const Color& color)
 }
 
 
-}
+} /// namespace AixLog
 
 
 #endif /// AIX_LOG_HPP
