@@ -564,7 +564,7 @@ struct SinkCerr : public SinkFormat
 
 
 /// Not tested due to unavailability of Windows
-struct SinkOutputDebugString : Sink
+struct SinkOutputDebugString : public Sink
 {
 	SinkOutputDebugString(Severity severity, Type type = Type::all, const std::string& default_tag = "") : Sink(severity, type)
 	{
@@ -580,7 +580,7 @@ struct SinkOutputDebugString : Sink
 
 
 
-struct SinkUnifiedLogging : Sink
+struct SinkUnifiedLogging : public Sink
 {
 	SinkUnifiedLogging(Severity severity, Type type = Type::all) : Sink(severity, type)
 	{
