@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.16.0
+    version 0.17.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -22,7 +22,7 @@
 #define AIX_LOG_HPP
 
 #ifndef _WIN32
-#define _HAS_SYSLOG_ 1
+#define HAS_SYSLOG_ 1
 #endif
 
 #include <algorithm>
@@ -42,7 +42,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #endif
-#ifdef _HAS_SYSLOG_
+#ifdef HAS_SYSLOG_
 #include <syslog.h>
 #endif
 
@@ -83,19 +83,17 @@ enum SEVERITY
 {
 // https://chromium.googlesource.com/chromium/mini_chromium/+/master/base/logging.cc
 
-// Aixlog      Boost      Syslog      Android      macOS      Syslog Desc
+// Aixlog      Boost       Syslog      Android     macOS       EventLog      Syslog Desc
 //
-//                        UNKNOWN
-//                        DEFAULT
-// trace       trace                 VERBOSE
-// debug       debug      DEBUG      DEBUG        DEBUG      debug-level message
-// info        info       INFO       INFO         INFO       informational message
-// notice                 NOTICE                             normal, but significant, condition
-// warning     warning    WARNING    WARN         DEFAULT    warning conditions
-// error       error      ERROR      ERROR        ERROR      error conditions
-// fatal       fatal      CRIT       FATAL        FAULT      critical conditions
-//                        ALERT                              action must be taken immediately
-//                        EMERG                              system is unusable
+// trace       trace       DEBUG       VERBOSE     DEBUG       INFORMATION
+// debug       debug       DEBUG       DEBUG       DEBUG       INFORMATION   debug-level message
+// info        info        INFO        INFO        INFO        SUCCESS       informational message
+// notice                  NOTICE      INFO        INFO        SUCCESS       normal, but significant, condition
+// warning     warning     WARNING     WARN        DEFAULT     WARNING       warning conditions
+// error       error       ERROR       ERROR       ERROR       ERROR         error conditions
+// fatal       fatal       CRIT        FATAL       FAULT       ERROR         critical conditions
+//                         ALERT                                             action must be taken immediately
+//                         EMERG                                             system is unusable
 
 	TRACE = 0,
 	DEBUG = 1,
@@ -361,7 +359,7 @@ public:
 	{
 		Log::instance().log_sinks_.clear();
 
-		for (auto sink: log_sinks)
+		for (const auto& sink: log_sinks)
 			Log::instance().add_logsink(sink);
 
 		std::clog.rdbuf(&Log::instance());
@@ -410,42 +408,35 @@ protected:
 
 	int sync()
 	{
-		if (!buffer_.str().empty())
+		if (!buffer_.str().empty() && conditional_.is_true())
 		{
-			if (conditional_.is_true())
+			for (const auto& sink: log_sinks_)
 			{
-				for (const auto sink: log_sinks_)
-				{
-					if (
-							(metadata_.type == Type::all) ||
-							(sink->get_type() == Type::all) ||
-							((metadata_.type == Type::special) && (sink->get_type() == Type::special)) ||
-							((metadata_.type == Type::normal) && (sink->get_type() == Type::normal))
-					)
-						if (metadata_.severity >= sink->severity)
-							sink->log(metadata_, buffer_.str());
-				}
+				if (
+						(metadata_.type == Type::all) ||
+						(sink->get_type() == Type::all) ||
+						(metadata_.type == sink->get_type())
+				)
+					if (metadata_.severity >= sink->severity)
+						sink->log(metadata_, buffer_.str());
 			}
-			buffer_.str("");
-			buffer_.clear();
-			metadata_.severity = Severity::trace;
-			metadata_.type = Type::normal;
-			metadata_.timestamp = nullptr;
-			metadata_.tag = nullptr;
-			metadata_.function = nullptr;
-			conditional_.set(true);
 		}
+
+		buffer_.str("");
+		buffer_.clear();
+		metadata_.severity = Severity::trace;
+		metadata_.type = Type::normal;
+		metadata_.timestamp = nullptr;
+		metadata_.tag = nullptr;
+		metadata_.function = nullptr;
+		conditional_.set(true);
+
 		return 0;
 	}
 
 	int overflow(int c)
 	{
-/*		if (
-				(severity_ > loglevel_) && 
-				((type_ == kNormal) || !syslog_enabled_) // || (syslogseverity_ > loglevel_))
-		)
-			return c;
-*/		if (c != EOF)
+		if (c != EOF)
 		{
 			if (c == '\n')
 				sync();
@@ -624,19 +615,19 @@ struct SinkSyslog : public Sink
 {
 	SinkSyslog(const char* ident, Severity severity, Type type) : Sink(severity, type)
 	{
-#ifdef _HAS_SYSLOG_
+#ifdef HAS_SYSLOG_
 		openlog(ident, LOG_PID, LOG_USER);
 #endif
 	}
 
 	virtual ~SinkSyslog()
 	{
-#ifdef _HAS_SYSLOG_
+#ifdef HAS_SYSLOG_
 		closelog();
 #endif
 	}
 
-#ifdef _HAS_SYSLOG_
+#ifdef HAS_SYSLOG_
 	int get_syslog_priority(Severity severity) const
 	{
 		// http://unix.superglobalmegacorp.com/Net2/newsrc/sys/syslog.h.html
@@ -664,7 +655,7 @@ struct SinkSyslog : public Sink
 
 	virtual void log(const Metadata& metadata, const std::string& message) const
 	{
-#ifdef _HAS_SYSLOG_
+#ifdef HAS_SYSLOG_
 		syslog(get_syslog_priority(metadata.severity), "%s", message.c_str());
 #endif
 	}
@@ -788,7 +779,7 @@ struct SinkNative : public Sink
 		log_sink_ = std::make_shared<SinkUnifiedLogging>(severity, type);
 #elif _WIN32
 		log_sink_ = std::make_shared<SinkEventLog>(severity, type);
-#elif _HAS_SYSLOG_
+#elif HAS_SYSLOG_
 		log_sink_ = std::make_shared<SinkSyslog>(ident_.c_str(), severity, type);
 #else
 		/// will not throw or something. Use "get_logger()" to check for success
