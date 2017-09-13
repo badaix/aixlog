@@ -1,15 +1,15 @@
 # AixLog
 
-C++ logging library
+Header-only C++ logging library
 
 ## Features
 * Single header file implementation
   * Simply include and use it!
-  * Small code base: adapt it to your needs
   * No dependcies, just vanilla C++11
 * Permissive MIT license
 * Use ostream operator `<<`
-  * easy to switch from existing "cout logging"
+  * Unobtrusive, typesafe and expressive
+  * Easy to switch from existing "cout logging"
 * Fancy name
 * Native support for various platforms (through Sinks)
   * Linux, Unix: Syslog
@@ -33,7 +33,7 @@ C++ logging library
     `LOG(INFO, "my tag") << "some message"`  
     ...is the same as...  
     `LOG(INFO) << TAG("my tag") << "some message"`
-  * Capture function and line number
+  * Capture function and line number and timestamp
   * Two different log types "normal" and "special": `LOG(INFO) << SPECIAL << "some special message"`
     * special might be used for syslog, while normal is used for console output
     * => Only special tagged messages will go to syslog
