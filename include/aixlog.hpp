@@ -480,7 +480,7 @@ struct SinkFormat : public Sink
 		format_ = format;
 	}
 
-	virtual void log(const Metadata& metadata, const std::string& message) const = 0;
+	void log(const Metadata& metadata, const std::string& message) const override = 0;
 
 
 protected:
@@ -529,7 +529,7 @@ struct SinkCout : public SinkFormat
 	{
 	}
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 		if (severity >= this->severity)
 			do_log(std::cout, metadata, message);
@@ -545,7 +545,7 @@ struct SinkCerr : public SinkFormat
 	{
 	}
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 		if (severity >= this->severity)
 			do_log(std::cerr, metadata, message);
@@ -561,7 +561,7 @@ struct SinkOutputDebugString : public Sink
 	{
 	}
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 #ifdef _WIN32
 		OutputDebugString(message.c_str());
@@ -601,7 +601,7 @@ struct SinkUnifiedLogging : public Sink
 	}
 #endif
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 #ifdef __APPLE__
 		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(metadata.severity), "%{public}s", message.c_str());
@@ -620,7 +620,7 @@ struct SinkSyslog : public Sink
 #endif
 	}
 
-	virtual ~SinkSyslog()
+	~SinkSyslog() override
 	{
 #ifdef HAS_SYSLOG_
 		closelog();
@@ -653,7 +653,7 @@ struct SinkSyslog : public Sink
 #endif
 
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 #ifdef HAS_SYSLOG_
 		syslog(get_syslog_priority(metadata.severity), "%s", message.c_str());
@@ -694,7 +694,7 @@ struct SinkAndroid : public Sink
 	}
 #endif
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 #ifdef __ANDROID__
 		std::string tag = metadata.tag?metadata.tag.text:(metadata.function?metadata.function.name:"");
@@ -751,7 +751,7 @@ struct SinkEventLog : public Sink
 	}
 #endif
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 #ifdef _WIN32
 		ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
@@ -792,7 +792,7 @@ struct SinkNative : public Sink
 		return log_sink_;
 	}
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 		if (log_sink_)
 			log_sink_->log(metadata, message);
@@ -813,7 +813,7 @@ struct SinkCallback : public Sink
 	{
 	}
 
-	virtual void log(const Metadata& metadata, const std::string& message) const
+	void log(const Metadata& metadata, const std::string& message) const override
 	{
 		if (callback_ && (severity >= this->severity))
 			callback_(metadata, message);
