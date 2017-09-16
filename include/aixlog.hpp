@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.17.0
+    version 0.18.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
