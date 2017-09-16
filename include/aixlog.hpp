@@ -79,6 +79,11 @@
 namespace AixLog
 {
 
+/// Severity of the log message
+/**
+ * Severity of the log message
+ * Mandatory parameter for the LOG macro
+ */
 enum SEVERITY
 {
 // https://chromium.googlesource.com/chromium/mini_chromium/+/master/base/logging.cc
@@ -106,6 +111,12 @@ enum SEVERITY
 
 
 
+/// Type of the log message or Sink
+/**
+ * Type of the log message or Sink
+ * "normal" messages will be logged by "normal" or "all" Sinks
+ * "special" ones by "special" or "all" Sinks
+ */
 enum class Type
 {
 	normal,
@@ -115,6 +126,7 @@ enum class Type
 
 
 
+/// Severity as a typed enum 
 enum class Severity : std::int8_t
 {
 	trace   = TRACE,
@@ -128,6 +140,7 @@ enum class Severity : std::int8_t
 
 
 
+/// Color constants used for console colors
 enum class Color
 {
 	none = 0,
@@ -143,6 +156,7 @@ enum class Color
 
 
 
+/// Encapsulation of foreground and background color
 struct TextColor
 {
 	TextColor(Color foreground = Color::none, Color background = Color::none) :
@@ -157,6 +171,7 @@ struct TextColor
 
 
 
+/// For Conditional logging of a log line
 struct Conditional
 {
 	Conditional() : Conditional(true)
@@ -183,6 +198,7 @@ private:
 
 
 
+/// Timestamp of a log line
 struct Timestamp
 {
 	typedef std::chrono::time_point<std::chrono::system_clock> time_point_sys_clock;
@@ -232,6 +248,7 @@ private:
 
 
 
+/// Tag (string) for log line
 struct Tag
 {
 	Tag(std::nullptr_t) : text(""), is_null_(true)
@@ -259,6 +276,7 @@ private:
 
 
 
+/// Capture function, file and line number of the log line
 struct Function
 {
 	Function(const std::string& name, const std::string& file, size_t line) :
@@ -289,6 +307,7 @@ private:
 
 
 
+/// Collection of a log line's meta data
 struct Metadata
 {
 	Metadata() : 
@@ -305,6 +324,7 @@ struct Metadata
 
 
 
+/// Abstract log sink
 struct Sink
 {
 	Sink(Severity severity, Type type) : severity(severity), sink_type_(type)
@@ -334,7 +354,7 @@ protected:
 };
 
 
-
+/// ostream operators << for the meta data structs 
 static std::ostream& operator<< (std::ostream& os, const Severity& log_severity);
 static std::ostream& operator<< (std::ostream& os, const Type& log_type);
 static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp);
@@ -833,6 +853,8 @@ static std::ostream& operator<< (std::ostream& os, const Severity& log_severity)
 		log->sync();
 		log->metadata_.severity = log_severity;
 	}
+	else if (!log)
+		os << Log::to_string(log_severity);
 	return os;
 }
 
@@ -853,6 +875,8 @@ static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp)
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
 		log->metadata_.timestamp = timestamp;
+	else if (timestamp)
+		os << timestamp.to_string();
 	return os;
 }
 
@@ -863,6 +887,8 @@ static std::ostream& operator<< (std::ostream& os, const Tag& tag)
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
 		log->metadata_.tag = tag;
+	else if (tag)
+		os << tag.text;
 	return os;
 }
 
@@ -873,6 +899,8 @@ static std::ostream& operator<< (std::ostream& os, const Function& function)
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log)
 		log->metadata_.function = function;
+	else if (function)
+		os << function.name;
 	return os;
 }
 
