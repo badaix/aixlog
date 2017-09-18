@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.18.0
+    version 0.19.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -48,8 +48,9 @@
 
 
 /// Internal helper macros (exposed, but shouldn't be used directly)
-#define AIXLOG_INTERNAL__LOG_WO_TAG(SEVERITY_) std::clog << (AixLog::Severity)AixLog::SEVERITY_
-#define AIXLOG_INTERNAL__LOG_TAG(SEVERITY_, TAG_) std::clog << (AixLog::Severity)AixLog::SEVERITY_ << TAG(TAG_)
+#define AIXLOG_INTERNAL__LOG() std::clog
+#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(AixLog::Severity::SEVERITY_)
+#define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(AixLog::Severity::SEVERITY_) << TAG(TAG_)
 
 #define AIXLOG_INTERNAL__ONE_COLOR(FG_) AixLog::Color::FG_
 #define AIXLOG_INTERNAL__TWO_COLOR(FG_, BG_) AixLog::TextColor(AixLog::Color::FG_, AixLog::Color::BG_)
@@ -61,8 +62,8 @@
 /// External logger macros
 // usage: LOG(SEVERITY) or LOG(SEVERITY, TAG)
 // e.g.: LOG(NOTICE) or LOG(NOTICE, "my tag")
-#define LOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_WO_TAG(__VA_ARGS__)) << TIMESTAMP << FUNC
-#define SLOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_WO_TAG(__VA_ARGS__)) << TIMESTAMP << SPECIAL << FUNC
+#define LOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_SEVERITY(__VA_ARGS__), AIXLOG_INTERNAL__LOG(__VA_ARGS__)) << TIMESTAMP << FUNC
+#define SLOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_SEVERITY(__VA_ARGS__), AIXLOG_INTERNAL__LOG(__VA_ARGS__)) << TIMESTAMP << SPECIAL << FUNC
 
 // usage: COLOR(TEXT_COLOR, BACKGROUND_COLOR) or COLOR(TEXT_COLOR)
 // e.g.: COLOR(yellow, blue) or COLOR(red)
@@ -84,10 +85,11 @@ namespace AixLog
  * Severity of the log message
  * Mandatory parameter for the LOG macro
  */
-enum SEVERITY
+enum class Severity : std::int8_t
 {
+// Mapping table from AixLog to other loggers. Boost is just for information.
 // https://chromium.googlesource.com/chromium/mini_chromium/+/master/base/logging.cc
-
+//
 // Aixlog      Boost       Syslog      Android     macOS       EventLog      Syslog Desc
 //
 // trace       trace       DEBUG       VERBOSE     DEBUG       INFORMATION
@@ -100,13 +102,26 @@ enum SEVERITY
 //                         ALERT                                             action must be taken immediately
 //                         EMERG                                             system is unusable
 
-	TRACE = 0,
-	DEBUG = 1,
-	INFO = 2,
-	NOTICE = 3,
+	trace   = 0,
+	TRACE   = 0,
+
+	debug   = 1,
+	DEBUG   = 1,
+
+	info    = 2,
+	INFO    = 2,
+
+	notice  = 3,
+	NOTICE  = 3,
+
+	warning = 4,
 	WARNING = 4,
-	ERROR = 5,
-	FATAL = 6
+
+	error   = 5,
+	ERROR   = 5,
+	
+	fatal   = 6,
+	FATAL   = 6
 };
 
 
@@ -126,32 +141,27 @@ enum class Type
 
 
 
-/// Severity as a typed enum 
-enum class Severity : std::int8_t
-{
-	trace   = TRACE,
-	debug   = DEBUG,
-	info    = INFO,
-	notice  = NOTICE,
-	warning = WARNING,
-	error   = ERROR,
-	fatal   = FATAL
-};
-
-
-
 /// Color constants used for console colors
 enum class Color
 {
 	none = 0,
+	NONE = 0,
 	black = 1,
+	BLACK = 1,
 	red = 2,
+	RED = 2,
 	green = 3,
+	GREEN = 3,
 	yellow = 4,
+	YELLOW = 4,
 	blue = 5,
+	BLUE = 5,
 	magenta = 6,
+	MAGENTA = 6,
 	cyan = 7,
-	white = 8
+	CYAN = 7,
+	white = 8,
+	WHITE = 8
 };
 
 
@@ -428,28 +438,30 @@ protected:
 
 	int sync()
 	{
-		if (!buffer_.str().empty() && conditional_.is_true())
+		if (!buffer_.str().empty())
 		{
-			for (const auto& sink: log_sinks_)
+			if (conditional_.is_true())
 			{
-				if (
-						(metadata_.type == Type::all) ||
-						(sink->get_type() == Type::all) ||
-						(metadata_.type == sink->get_type())
-				)
-					if (metadata_.severity >= sink->severity)
-						sink->log(metadata_, buffer_.str());
+				for (const auto& sink: log_sinks_)
+				{
+					if (
+							(metadata_.type == Type::all) ||
+							(sink->get_type() == Type::all) ||
+							(metadata_.type == sink->get_type())
+					)
+						if (metadata_.severity >= sink->severity)
+							sink->log(metadata_, buffer_.str());
+				}
 			}
+			buffer_.str("");
+			buffer_.clear();
+			metadata_.severity = Severity::trace;
+			metadata_.type = Type::normal;
+			metadata_.timestamp = nullptr;
+			metadata_.tag = nullptr;
+			metadata_.function = nullptr;
+			conditional_.set(true);
 		}
-
-		buffer_.str("");
-		buffer_.clear();
-		metadata_.severity = Severity::trace;
-		metadata_.type = Type::normal;
-		metadata_.timestamp = nullptr;
-		metadata_.tag = nullptr;
-		metadata_.function = nullptr;
-		conditional_.set(true);
 
 		return 0;
 	}
@@ -489,7 +501,7 @@ private:
 
 struct SinkFormat : public Sink
 {
-	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag)") :
+	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag_func)") :
 		Sink(severity, type), 
 		format_(format)
 	{
@@ -514,9 +526,13 @@ protected:
 		if (pos != std::string::npos)
 			result.replace(pos, 9, Log::to_string(metadata.severity));
 
+		pos = result.find("#tag_func");
+		if (pos != std::string::npos)
+			result.replace(pos, 9, metadata.tag?metadata.tag.text:(metadata.function?metadata.function.name:"log"));
+
 		pos = result.find("#tag");
 		if (pos != std::string::npos)
-			result.replace(pos, 4, metadata.tag?metadata.tag.text:(metadata.function?metadata.function.name:"log"));
+			result.replace(pos, 4, metadata.tag?metadata.tag.text:"");
 
 		pos = result.find("#function");
 		if (pos != std::string::npos)
@@ -544,7 +560,7 @@ protected:
 
 struct SinkCout : public SinkFormat
 {
-	SinkCout(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") :
+	SinkCout(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") :
 		SinkFormat(severity, type, format)
 	{
 	}
@@ -560,7 +576,7 @@ struct SinkCout : public SinkFormat
 
 struct SinkCerr : public SinkFormat
 {
-	SinkCerr(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)") :
+	SinkCerr(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") :
 		SinkFormat(severity, type, format)
 	{
 	}
@@ -916,20 +932,20 @@ static std::ostream& operator<< (std::ostream& os, const Conditional& conditiona
 
 
 
-static std::ostream& operator<< (std::ostream& os, const TextColor& log_color)
+static std::ostream& operator<< (std::ostream& os, const TextColor& text_color)
 {
 	os << "\033[";
-	if ((log_color.foreground == Color::none) && (log_color.background == Color::none))
+	if ((text_color.foreground == Color::none) && (text_color.background == Color::none))
 		os << "0"; // reset colors if no params
 
-	if (log_color.foreground != Color::none) 
+	if (text_color.foreground != Color::none) 
 	{
-		os << 29 + (int)log_color.foreground;
-		if (log_color.background != Color::none) 
+		os << 29 + (int)text_color.foreground;
+		if (text_color.background != Color::none) 
 			os << ";";
 	}
-	if (log_color.background != Color::none) 
-		os << 39 + (int)log_color.background;
+	if (text_color.background != Color::none) 
+		os << 39 + (int)text_color.background;
 	os << "m";
 
 	return os;
