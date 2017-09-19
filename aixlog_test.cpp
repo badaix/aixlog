@@ -80,6 +80,6 @@ int main(int argc, char** argv)
 	LOG(FATAL) << "LOG(FATAL) " << COLOR(yellow, blue) << "yellow on blue background" << COLOR(none) << ", default color (using macros)\n";
 
 	AixLog::Severity severity(AixLog::Severity::debug);
-	LOG() << severity << "LOG() << severity\n";
+	LOG(severity) << "LOG(severity) << severity\n";
 }
 

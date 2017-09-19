@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.19.0
+    version 0.20.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -48,9 +48,8 @@
 
 
 /// Internal helper macros (exposed, but shouldn't be used directly)
-#define AIXLOG_INTERNAL__LOG() std::clog
-#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(AixLog::Severity::SEVERITY_)
-#define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(AixLog::Severity::SEVERITY_) << TAG(TAG_)
+#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_)
+#define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG(TAG_)
 
 #define AIXLOG_INTERNAL__ONE_COLOR(FG_) AixLog::Color::FG_
 #define AIXLOG_INTERNAL__TWO_COLOR(FG_, BG_) AixLog::TextColor(AixLog::Color::FG_, AixLog::Color::BG_)
@@ -62,8 +61,8 @@
 /// External logger macros
 // usage: LOG(SEVERITY) or LOG(SEVERITY, TAG)
 // e.g.: LOG(NOTICE) or LOG(NOTICE, "my tag")
-#define LOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_SEVERITY(__VA_ARGS__), AIXLOG_INTERNAL__LOG(__VA_ARGS__)) << TIMESTAMP << FUNC
-#define SLOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_SEVERITY(__VA_ARGS__), AIXLOG_INTERNAL__LOG(__VA_ARGS__)) << TIMESTAMP << SPECIAL << FUNC
+#define LOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_SEVERITY(__VA_ARGS__)) << TIMESTAMP << FUNC
+#define SLOG(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG(__VA_ARGS__), AIXLOG_INTERNAL__LOG_SEVERITY(__VA_ARGS__)) << TIMESTAMP << SPECIAL << FUNC
 
 // usage: COLOR(TEXT_COLOR, BACKGROUND_COLOR) or COLOR(TEXT_COLOR)
 // e.g.: COLOR(yellow, blue) or COLOR(red)
@@ -75,6 +74,18 @@
 #define SPECIAL AixLog::Type::special
 #define TIMESTAMP AixLog::Timestamp(std::chrono::system_clock::now())
 
+
+/// Severity of the log message
+enum SEVERITY
+{
+	TRACE   = 0,
+	DEBUG   = 1,
+	INFO    = 2,
+	NOTICE  = 3,
+	WARNING = 4,
+	ERROR   = 5,	
+	FATAL   = 6
+};
 
 
 namespace AixLog
@@ -102,26 +113,13 @@ enum class Severity : std::int8_t
 //                         ALERT                                             action must be taken immediately
 //                         EMERG                                             system is unusable
 
-	trace   = 0,
-	TRACE   = 0,
-
-	debug   = 1,
-	DEBUG   = 1,
-
-	info    = 2,
-	INFO    = 2,
-
-	notice  = 3,
-	NOTICE  = 3,
-
-	warning = 4,
-	WARNING = 4,
-
-	error   = 5,
-	ERROR   = 5,
-	
-	fatal   = 6,
-	FATAL   = 6
+	trace   = SEVERITY::TRACE,
+	debug   = SEVERITY::DEBUG,
+	info    = SEVERITY::INFO,
+	notice  = SEVERITY::NOTICE,
+	warning = SEVERITY::WARNING,
+	error   = SEVERITY::ERROR,	
+	fatal   = SEVERITY::FATAL
 };
 
 
