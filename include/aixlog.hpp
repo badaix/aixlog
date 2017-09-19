@@ -13,7 +13,7 @@
     of the MIT license.  See the LICENSE file for details.
 ***/
 
-/// inspired by "eater": 
+/// inspired by "eater":
 /// https://stackoverflow.com/questions/2638654/redirect-c-stdclog-to-syslog-on-unix
 
 
@@ -83,7 +83,7 @@ enum SEVERITY
 	INFO    = 2,
 	NOTICE  = 3,
 	WARNING = 4,
-	ERROR   = 5,	
+	ERROR   = 5,
 	FATAL   = 6
 };
 
@@ -118,7 +118,7 @@ enum class Severity : std::int8_t
 	info    = SEVERITY::INFO,
 	notice  = SEVERITY::NOTICE,
 	warning = SEVERITY::WARNING,
-	error   = SEVERITY::ERROR,	
+	error   = SEVERITY::ERROR,
 	fatal   = SEVERITY::FATAL
 };
 
@@ -318,7 +318,7 @@ private:
 /// Collection of a log line's meta data
 struct Metadata
 {
-	Metadata() : 
+	Metadata() :
 		severity(Severity::trace), tag(nullptr), type(Type::normal), function(nullptr), timestamp(nullptr)
 	{
 	}
@@ -362,7 +362,7 @@ protected:
 };
 
 
-/// ostream operators << for the meta data structs 
+/// ostream operators << for the meta data structs
 static std::ostream& operator<< (std::ostream& os, const Severity& log_severity);
 static std::ostream& operator<< (std::ostream& os, const Type& log_type);
 static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp);
@@ -500,7 +500,7 @@ private:
 struct SinkFormat : public Sink
 {
 	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag_func)") :
-		Sink(severity, type), 
+		Sink(severity, type),
 		format_(format)
 	{
 	}
@@ -629,7 +629,7 @@ struct SinkUnifiedLogging : public Sink
 				return OS_LOG_TYPE_ERROR;
 			case Severity::fatal:
 				return OS_LOG_TYPE_FAULT;
-			default: 
+			default:
 				return OS_LOG_TYPE_DEFAULT;
 		}
 	}
@@ -680,7 +680,7 @@ struct SinkSyslog : public Sink
 				return LOG_ERR;
 			case Severity::fatal:
 				return LOG_CRIT;
-			default: 
+			default:
 				return LOG_INFO;
 		}
 	}
@@ -722,7 +722,7 @@ struct SinkAndroid : public Sink
 				return ANDROID_LOG_ERROR;
 			case Severity::fatal:
 				return ANDROID_LOG_FATAL;
-			default: 
+			default:
 				return ANDROID_LOG_UNKNOWN;
 		}
 	}
@@ -741,7 +741,7 @@ struct SinkAndroid : public Sink
 			log_tag = tag;
 		else
 			log_tag = "log";
-			
+
 		__android_log_write(get_android_prio(metadata.severity), log_tag.c_str(), message.c_str());
 #endif
 	}
@@ -779,7 +779,7 @@ struct SinkEventLog : public Sink
 			case Severity::error:
 			case Severity::fatal:
 				return EVENTLOG_ERROR_TYPE;
-			default: 
+			default:
 				return EVENTLOG_INFORMATION_TYPE;
 		}
 	}
@@ -802,9 +802,9 @@ protected:
 
 struct SinkNative : public Sink
 {
-	SinkNative(const std::string& ident, Severity severity, Type type = Type::all) : 
-		Sink(severity, type), 
-		log_sink_(nullptr), 
+	SinkNative(const std::string& ident, Severity severity, Type type = Type::all) :
+		Sink(severity, type),
+		log_sink_(nullptr),
 		ident_(ident)
 	{
 #ifdef __ANDROID__
@@ -936,13 +936,13 @@ static std::ostream& operator<< (std::ostream& os, const TextColor& text_color)
 	if ((text_color.foreground == Color::none) && (text_color.background == Color::none))
 		os << "0"; // reset colors if no params
 
-	if (text_color.foreground != Color::none) 
+	if (text_color.foreground != Color::none)
 	{
 		os << 29 + (int)text_color.foreground;
-		if (text_color.background != Color::none) 
+		if (text_color.background != Color::none)
 			os << ";";
 	}
-	if (text_color.background != Color::none) 
+	if (text_color.background != Color::none)
 		os << 39 + (int)text_color.background;
 	os << "m";
 
