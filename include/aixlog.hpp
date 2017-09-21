@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.20.0
+    version 0.21.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -209,7 +209,7 @@ private:
 /// Timestamp of a log line
 struct Timestamp
 {
-	typedef std::chrono::time_point<std::chrono::system_clock> time_point_sys_clock;
+	using time_point_sys_clock = std::chrono::time_point<std::chrono::system_clock>;
 
 	Timestamp(std::nullptr_t) : is_null_(true)
 	{
@@ -242,7 +242,7 @@ struct Timestamp
 		{
 			int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(time_point).time_since_epoch().count() % 1000;
 			char ms_str[4];
-			sprintf(ms_str, "%03d", ms_part);
+			sprintf(&ms_str[0], "%03d", ms_part);
 			result.replace(pos, 3, ms_str);
 		}
 		return result;
@@ -339,9 +339,7 @@ struct Sink
 	{
 	}
 
-	virtual ~Sink()
-	{
-	}
+	virtual ~Sink() = default;
 
 	virtual void log(const Metadata& metadata, const std::string& message) const = 0;
 	virtual Type get_type() const
@@ -370,7 +368,7 @@ static std::ostream& operator<< (std::ostream& os, const Tag& tag);
 static std::ostream& operator<< (std::ostream& os, const Function& function);
 static std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
 
-typedef std::shared_ptr<Sink> log_sink_ptr;
+using log_sink_ptr = std::shared_ptr<Sink>;
 
 
 class Log : public std::basic_streambuf<char, std::char_traits<char> >
@@ -393,12 +391,12 @@ public:
 		std::clog.rdbuf(&Log::instance());
 	}
 
-	void add_logsink(log_sink_ptr sink)
+	void add_logsink(const log_sink_ptr& sink)
 	{
 		log_sinks_.push_back(sink);
 	}
 
-	void remove_logsink(log_sink_ptr sink)
+	void remove_logsink(const log_sink_ptr& sink)
 	{
 		log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
 	}
@@ -430,9 +428,7 @@ public:
 
 
 protected:
-	Log()
-	{
-	}
+	Log() = default;
 
 	int sync()
 	{
@@ -828,7 +824,7 @@ struct SinkNative : public Sink
 
 	void log(const Metadata& metadata, const std::string& message) const override
 	{
-		if (log_sink_)
+		if (log_sink_ != nullptr)
 			log_sink_->log(metadata, message);
 	}
 
@@ -841,7 +837,7 @@ protected:
 
 struct SinkCallback : public Sink
 {
-	typedef std::function<void(const Metadata& metadata, const std::string& message)> callback_fun;
+	using callback_fun = std::function<void(const Metadata& metadata, const std::string& message)>;
 
 	SinkCallback(Severity severity, Type type, callback_fun callback) : Sink(severity, type), callback_(callback)
 	{
@@ -862,13 +858,18 @@ private:
 static std::ostream& operator<< (std::ostream& os, const Severity& log_severity)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log && (log->metadata_.severity != log_severity))
+	if (log != nullptr)
 	{
-		log->sync();
-		log->metadata_.severity = log_severity;
+		if (log->metadata_.severity != log_severity)
+		{
+			log->sync();
+			log->metadata_.severity = log_severity;
+		}
 	}
-	else if (!log)
+	else
+	{
 		os << Log::to_string(log_severity);
+	}
 	return os;
 }
 
@@ -877,7 +878,7 @@ static std::ostream& operator<< (std::ostream& os, const Severity& log_severity)
 static std::ostream& operator<< (std::ostream& os, const Type& log_type)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log)
+	if (log != nullptr)
 		log->metadata_.type = log_type;
 	return os;
 }
@@ -887,7 +888,7 @@ static std::ostream& operator<< (std::ostream& os, const Type& log_type)
 static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log)
+	if (log != nullptr)
 		log->metadata_.timestamp = timestamp;
 	else if (timestamp)
 		os << timestamp.to_string();
@@ -899,7 +900,7 @@ static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp)
 static std::ostream& operator<< (std::ostream& os, const Tag& tag)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log)
+	if (log != nullptr)
 		log->metadata_.tag = tag;
 	else if (tag)
 		os << tag.text;
@@ -911,7 +912,7 @@ static std::ostream& operator<< (std::ostream& os, const Tag& tag)
 static std::ostream& operator<< (std::ostream& os, const Function& function)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log)
+	if (log != nullptr)
 		log->metadata_.function = function;
 	else if (function)
 		os << function.name;
@@ -923,7 +924,7 @@ static std::ostream& operator<< (std::ostream& os, const Function& function)
 static std::ostream& operator<< (std::ostream& os, const Conditional& conditional)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
-	if (log)
+	if (log != nullptr)
 		log->conditional_.set(conditional.is_true());
 	return os;
 }
@@ -938,12 +939,12 @@ static std::ostream& operator<< (std::ostream& os, const TextColor& text_color)
 
 	if (text_color.foreground != Color::none)
 	{
-		os << 29 + (int)text_color.foreground;
+		os << 29 + static_cast<int>(text_color.foreground);
 		if (text_color.background != Color::none)
 			os << ";";
 	}
 	if (text_color.background != Color::none)
-		os << 39 + (int)text_color.background;
+		os << 39 + static_cast<int>(text_color.background);
 	os << "m";
 
 	return os;
@@ -958,9 +959,9 @@ static std::ostream& operator<< (std::ostream& os, const Color& color)
 }
 
 
-} /// namespace AixLog
+} // namespace AixLog
 
 
-#endif /// AIX_LOG_HPP
+#endif // AIX_LOG_HPP
 
 
