@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.21.0
+    version 0.22.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -449,12 +449,6 @@ protected:
 			}
 			buffer_.str("");
 			buffer_.clear();
-			metadata_.severity = Severity::trace;
-			metadata_.type = Type::normal;
-			metadata_.timestamp = nullptr;
-			metadata_.tag = nullptr;
-			metadata_.function = nullptr;
-			conditional_.set(true);
 		}
 
 		return 0;
@@ -864,6 +858,11 @@ static std::ostream& operator<< (std::ostream& os, const Severity& log_severity)
 		{
 			log->sync();
 			log->metadata_.severity = log_severity;
+			log->metadata_.type = Type::normal;
+			log->metadata_.timestamp = nullptr;
+			log->metadata_.tag = nullptr;
+			log->metadata_.function = nullptr;
+			log->conditional_.set(true);
 		}
 	}
 	else
