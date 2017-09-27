@@ -21,8 +21,8 @@ int main(int argc, char** argv)
 {
 	AixLog::Log::init(
 		{
-			/// Log everything into file "test.log"
-			make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "test.log"),
+			/// Log everything into file "all.log"
+			make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "all.log"),
 			/// Log normal (i.e. non-special) logs to SinkCout
 			make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func) #message"),
 			/// Log error and higher severity messages to cerr
@@ -43,6 +43,8 @@ int main(int argc, char** argv)
 			)
 		}
 	);
+	/// Log special logs into file "special.log"
+	AixLog::Log::instance().add_logsink<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::special, "special.log");
 
 	/// Log with info severity
 	LOG(INFO) << "LOG(INFO)\n";

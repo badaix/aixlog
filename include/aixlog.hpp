@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.23.0
+    version 0.24.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -432,6 +432,18 @@ public:
 			Log::instance().add_logsink(sink);
 
 		std::clog.rdbuf(&Log::instance());
+	}
+
+	template<typename T, typename... Ts>
+	std::shared_ptr<T> add_logsink(Ts&&... params)
+	{
+		static_assert(
+			std::is_base_of<Sink, typename std::decay<T>::type>::value,
+			"type T must be a Sink"
+		);
+		std::shared_ptr<T> sink = std::make_shared<T>(std::forward<Ts>(params)...);
+		log_sinks_.push_back(sink);
+		return sink;
 	}
 
 	void add_logsink(const log_sink_ptr& sink)
