@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.22.0
+    version 0.23.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -75,7 +76,10 @@
 #define TIMESTAMP AixLog::Timestamp(std::chrono::system_clock::now())
 
 
-/// Severity of the log message
+/**
+ * @brief
+ * Severity of the log message
+ */
 enum SEVERITY
 {
 	TRACE   = 0,
@@ -91,9 +95,11 @@ enum SEVERITY
 namespace AixLog
 {
 
-/// Severity of the log message
+
 /**
+ * @brief
  * Severity of the log message
+ *
  * Mandatory parameter for the LOG macro
  */
 enum class Severity : std::int8_t
@@ -124,9 +130,10 @@ enum class Severity : std::int8_t
 
 
 
-/// Type of the log message or Sink
 /**
+ * @brief
  * Type of the log message or Sink
+ *
  * "normal" messages will be logged by "normal" or "all" Sinks
  * "special" ones by "special" or "all" Sinks
  */
@@ -139,7 +146,10 @@ enum class Type
 
 
 
-/// Color constants used for console colors
+/**
+ * @brief
+ * Color constants used for console colors
+ */
 enum class Color
 {
 	none = 0,
@@ -164,7 +174,10 @@ enum class Color
 
 
 
-/// Encapsulation of foreground and background color
+/**
+ * @brief
+ * Encapsulation of foreground and background color
+ */
 struct TextColor
 {
 	TextColor(Color foreground = Color::none, Color background = Color::none) :
@@ -179,7 +192,10 @@ struct TextColor
 
 
 
-/// For Conditional logging of a log line
+/**
+ * @brief
+ * For Conditional logging of a log line
+ */
 struct Conditional
 {
 	Conditional() : Conditional(true)
@@ -206,7 +222,12 @@ private:
 
 
 
-/// Timestamp of a log line
+/**
+ * @brief
+ * Timestamp of a log line
+ * 
+ * to_string will convert the time stamp into a string, using the strftime syntax
+ */
 struct Timestamp
 {
 	using time_point_sys_clock = std::chrono::time_point<std::chrono::system_clock>;
@@ -256,7 +277,10 @@ private:
 
 
 
-/// Tag (string) for log line
+/**
+ * @brief
+ * Tag (string) for log line
+ */
 struct Tag
 {
 	Tag(std::nullptr_t) : text(""), is_null_(true)
@@ -284,7 +308,10 @@ private:
 
 
 
-/// Capture function, file and line number of the log line
+/**
+ * @brief
+ * Capture function, file and line number of the log line
+ */
 struct Function
 {
 	Function(const std::string& name, const std::string& file, size_t line) :
@@ -315,7 +342,10 @@ private:
 
 
 
-/// Collection of a log line's meta data
+/**
+ * @brief
+ * Collection of a log line's meta data
+ */
 struct Metadata
 {
 	Metadata() :
@@ -332,7 +362,12 @@ struct Metadata
 
 
 
-/// Abstract log sink
+/**
+ * @brief
+ * Abstract log sink
+ * 
+ * All log sinks must inherit from this Sink
+ */
 struct Sink
 {
 	Sink(Severity severity, Type type) : severity(severity), sink_type_(type)
@@ -341,7 +376,7 @@ struct Sink
 
 	virtual ~Sink() = default;
 
-	virtual void log(const Metadata& metadata, const std::string& message) const = 0;
+	virtual void log(const Metadata& metadata, const std::string& message) = 0;
 	virtual Type get_type() const
 	{
 		return sink_type_;
@@ -371,6 +406,14 @@ static std::ostream& operator<< (std::ostream& os, const Conditional& conditiona
 using log_sink_ptr = std::shared_ptr<Sink>;
 
 
+/**
+ * @brief
+ * Main Logger class with "Log::init"
+ *
+ * Don't use it directly, but call once "Log::init" with your log sink instances.
+ * The Log class will simply redirect clog to itself (as a streambuf) and
+ * forward whatever went to clog to the log sink instances
+ */
 class Log : public std::basic_streambuf<char, std::char_traits<char> >
 {
 public:
@@ -487,6 +530,20 @@ private:
 
 
 
+/**
+ * @brief
+ * Abstract log sink with support for formatting log message
+ *
+ * "format" in the c'tor defines a log pattern. 
+ * For every log message, these placeholders will be substituded:
+ * - strftime syntax is used to format the logging time stamp (%Y, %m, %d, ...)
+ * - #ms: milliseconds part of the logging time stamp with leading zeros
+ * - #severity: log severity
+ * - #tag_func: the log tag. If empty, the function
+ * - #tag: the log tag
+ * - #function: the function
+ * - #message: the log message
+ */
 struct SinkFormat : public Sink
 {
 	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag_func)") :
@@ -500,7 +557,7 @@ struct SinkFormat : public Sink
 		format_ = format;
 	}
 
-	void log(const Metadata& metadata, const std::string& message) const override = 0;
+	void log(const Metadata& metadata, const std::string& message) override = 0;
 
 
 protected:
@@ -546,6 +603,10 @@ protected:
 
 
 
+/**
+ * @brief
+ * Formatted logging to cout
+ */
 struct SinkCout : public SinkFormat
 {
 	SinkCout(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") :
@@ -553,7 +614,7 @@ struct SinkCout : public SinkFormat
 	{
 	}
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 		if (severity >= this->severity)
 			do_log(std::cout, metadata, message);
@@ -562,6 +623,10 @@ struct SinkCout : public SinkFormat
 
 
 
+/**
+ * @brief
+ * Formatted logging to cerr
+ */
 struct SinkCerr : public SinkFormat
 {
 	SinkCerr(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") :
@@ -569,7 +634,7 @@ struct SinkCerr : public SinkFormat
 	{
 	}
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 		if (severity >= this->severity)
 			do_log(std::cerr, metadata, message);
@@ -578,14 +643,48 @@ struct SinkCerr : public SinkFormat
 
 
 
-/// Not tested due to unavailability of Windows
+/**
+ * @brief
+ * Formatted logging to file
+ */
+struct SinkFile : public SinkFormat
+{
+	SinkFile(Severity severity, Type type, const std::string& filename, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") :
+		SinkFormat(severity, type, format)
+	{
+		ofs.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+	}
+
+	~SinkFile() override
+	{
+		ofs.close();
+	}
+
+	void log(const Metadata& metadata, const std::string& message) override
+	{
+		if (severity >= this->severity)
+			do_log(ofs, metadata, message);
+	}
+	
+protected:
+	mutable std::ofstream ofs;
+};
+
+
+
+/**
+ * @brief
+ * Windows: Logging to OutputDebugString
+ * 
+ * Not tested due to unavailability of Windows
+ */
 struct SinkOutputDebugString : public Sink
 {
 	SinkOutputDebugString(Severity severity, Type type = Type::all, const std::string& default_tag = "") : Sink(severity, type)
 	{
 	}
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 #ifdef _WIN32
 		OutputDebugString(message.c_str());
@@ -595,6 +694,10 @@ struct SinkOutputDebugString : public Sink
 
 
 
+/**
+ * @brief
+ * macOS: Logging to Apples system logger
+ */
 struct SinkUnifiedLogging : public Sink
 {
 	SinkUnifiedLogging(Severity severity, Type type = Type::all) : Sink(severity, type)
@@ -625,7 +728,7 @@ struct SinkUnifiedLogging : public Sink
 	}
 #endif
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 #ifdef __APPLE__
 		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(metadata.severity), "%{public}s", message.c_str());
@@ -635,6 +738,10 @@ struct SinkUnifiedLogging : public Sink
 
 
 
+/**
+ * @brief
+ * UNIX: Logging to syslog
+ */
 struct SinkSyslog : public Sink
 {
 	SinkSyslog(const char* ident, Severity severity, Type type) : Sink(severity, type)
@@ -677,7 +784,7 @@ struct SinkSyslog : public Sink
 #endif
 
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 #ifdef HAS_SYSLOG_
 		syslog(get_syslog_priority(metadata.severity), "%s", message.c_str());
@@ -687,6 +794,12 @@ struct SinkSyslog : public Sink
 
 
 
+/**
+ * @brief
+ * Android: Logging to android log
+ * 
+ * Use logcat to read the logs
+ */
 struct SinkAndroid : public Sink
 {
 	SinkAndroid(const std::string& ident, Severity severity, Type type = Type::all) : Sink(severity, type), ident_(ident)
@@ -718,7 +831,7 @@ struct SinkAndroid : public Sink
 	}
 #endif
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 #ifdef __ANDROID__
 		std::string tag = metadata.tag?metadata.tag.text:(metadata.function?metadata.function.name:"");
@@ -742,7 +855,12 @@ protected:
 
 
 
-/// Not tested due to unavailability of Windows
+/**
+ * @brief
+ * Windows: Logging to event logger
+ *
+ * Not tested due to unavailability of Windows
+ */
 struct SinkEventLog : public Sink
 {
 	SinkEventLog(const std::string& ident, Severity severity, Type type = Type::all) : Sink(severity, type)
@@ -775,7 +893,7 @@ struct SinkEventLog : public Sink
 	}
 #endif
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 #ifdef _WIN32
 		ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
@@ -790,6 +908,15 @@ protected:
 
 
 
+/**
+ * @brief
+ * Log to the system's native sys logger
+ *
+ * - Android: Android log
+ * - macOS:   unified log
+ * - Windows: event log
+ * - Unix:    syslog
+ */
 struct SinkNative : public Sink
 {
 	SinkNative(const std::string& ident, Severity severity, Type type = Type::all) :
@@ -816,7 +943,7 @@ struct SinkNative : public Sink
 		return log_sink_;
 	}
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 		if (log_sink_ != nullptr)
 			log_sink_->log(metadata, message);
@@ -829,6 +956,14 @@ protected:
 
 
 
+/**
+ * @brief
+ * Forward log messages to a callback function
+ *
+ * Pass the callback function to the c'tor.
+ * This can be any function that matches the signature of "callback_fun"
+ * Might also be a lambda function
+ */
 struct SinkCallback : public Sink
 {
 	using callback_fun = std::function<void(const Metadata& metadata, const std::string& message)>;
@@ -837,7 +972,7 @@ struct SinkCallback : public Sink
 	{
 	}
 
-	void log(const Metadata& metadata, const std::string& message) const override
+	void log(const Metadata& metadata, const std::string& message) override
 	{
 		if (callback_ && (severity >= this->severity))
 			callback_(metadata, message);
@@ -849,6 +984,12 @@ private:
 
 
 
+/**
+ * @brief
+ * ostream << operator for "Severity"
+ *
+ * Severity must be the first thing that is logged into clog, since it will reset the loggers metadata.
+ */
 static std::ostream& operator<< (std::ostream& os, const Severity& log_severity)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
