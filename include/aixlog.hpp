@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.24.0
+    version 0.25.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -432,6 +432,14 @@ public:
 			Log::instance().add_logsink(sink);
 
 		std::clog.rdbuf(&Log::instance());
+	}
+
+	template<typename T, typename... Ts>
+	static std::shared_ptr<T> init(Ts&&... params)
+	{
+		std::shared_ptr<T> sink = Log::instance().add_logsink<T>(std::forward<Ts>(params)...);
+		init({sink});
+		return sink;
 	}
 
 	template<typename T, typename... Ts>

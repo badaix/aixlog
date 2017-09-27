@@ -19,6 +19,9 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+	AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+	LOG(INFO) << "Logger with one cout log sink\n";
+
 	AixLog::Log::init(
 		{
 			/// Log everything into file "all.log"
