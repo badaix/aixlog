@@ -63,8 +63,36 @@ auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::
 AixLog::Log::init({sink_cout, sink_file});
 ```
 
+## Advanced usage
+You can easily fit AixLog to your needs by adding your own sink, that derives from the `Sink` class. Or even more simple, by using `SinkCallback` with a custom call back function:
+```c++
+AixLog::Log::init<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
+	[](const AixLog::Metadata& metadata, const std::string& message)
+	{
+		cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+		if (metadata.timestamp)
+			cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
+		if (metadata.function)
+			cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
+	}
+			);
+LOG(INFO) << TAG("test") << "Hello, Lambda!\n";
+```
+This will print
+```
+Callback:
+	msg:   Hello, Lambda!
+	tag:   test
+	sever: Info (2)
+	type:  normal
+	time:  2017-09-28 11-46-32.179
+	func:  main
+	line:  36
+	file:  aixlog_test.cpp
+```
 
-## Advanced usage example
+
+## Usage example
 ```c++
 #include "aixlog.hpp"
 
