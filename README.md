@@ -41,7 +41,30 @@ Header-only C++ logging library
     * Foreground: `LOG(INFO) << COLOR(red) << "red foreground"`
     * Foreground and background: `LOG(INFO) << COLOR(yellow, blue) << "yellow on blue background"`
 
-## Usage Example
+## Basic usage
+To use AixLog, you must once pass a log sink to `AixLog:Log::init`, e.g. a `SinkCout`:
+```c++
+AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+LOG(INFO) << "Hello, World!\n";
+```
+This will print
+```
+2017-09-28 11-01-16.049 [Info] (main) Hello, World!
+```
+There are two overloads for `AixLog:Log::init`: 
+1. one creates and returns an instance of a Sink (as in the example above)
+```c++
+auto sink = AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+```
+2. one takes a vector of Sinks
+```c++
+auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "logfile.log");
+AixLog::Log::init({sink_cout, sink_file});
+```
+
+
+## Advanced usage example
 ```c++
 #include "aixlog.hpp"
 
