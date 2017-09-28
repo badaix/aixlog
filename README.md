@@ -75,7 +75,7 @@ AixLog::Log::init<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::a
 		if (metadata.function)
 			cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
 	}
-			);
+);
 LOG(INFO) << TAG("test") << "Hello, Lambda!\n";
 ```
 This will print
