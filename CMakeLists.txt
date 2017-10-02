@@ -20,8 +20,8 @@ include_directories(
 	"include"
 )
 
-add_executable(aixlog_test
-	aixlog_test.cpp
+add_executable(aixlog_example
+	aixlog_example.cpp
 )
 
 
