@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.25.0
+    version 0.25.1
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -636,8 +636,7 @@ struct SinkCout : public SinkFormat
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-		if (severity >= this->severity)
-			do_log(std::cout, metadata, message);
+		do_log(std::cout, metadata, message);
 	}
 };
 
@@ -656,8 +655,7 @@ struct SinkCerr : public SinkFormat
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-		if (severity >= this->severity)
-			do_log(std::cerr, metadata, message);
+		do_log(std::cerr, metadata, message);
 	}
 };
 
@@ -682,8 +680,7 @@ struct SinkFile : public SinkFormat
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-		if (severity >= this->severity)
-			do_log(ofs, metadata, message);
+		do_log(ofs, metadata, message);
 	}
 	
 protected:
@@ -994,7 +991,7 @@ struct SinkCallback : public Sink
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-		if (callback_ && (severity >= this->severity))
+		if (callback_)
 			callback_(metadata, message);
 	}
 
