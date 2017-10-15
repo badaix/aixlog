@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 0.26.0
+    version 0.27.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -34,6 +34,7 @@
 #include <memory>
 #include <sstream>
 #include <vector>
+#include <mutex>
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -546,6 +547,7 @@ private:
 	Metadata metadata_;
 	Conditional conditional_;
 	std::vector<log_sink_ptr> log_sinks_;
+	std::mutex mutex_;
 };
 
 
@@ -1012,6 +1014,7 @@ static std::ostream& operator<< (std::ostream& os, const Severity& log_severity)
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log != nullptr)
 	{
+		std::lock_guard<std::mutex> lock(log->mutex_);		
 		if (log->metadata_.severity != log_severity)
 		{
 			log->sync();
@@ -1036,7 +1039,10 @@ static std::ostream& operator<< (std::ostream& os, const Type& log_type)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log != nullptr)
+	{
+		std::lock_guard<std::mutex> lock(log->mutex_);		
 		log->metadata_.type = log_type;
+	}
 	return os;
 }
 
@@ -1046,7 +1052,10 @@ static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log != nullptr)
+	{
+		std::lock_guard<std::mutex> lock(log->mutex_);		
 		log->metadata_.timestamp = timestamp;
+	}
 	else if (timestamp)
 		os << timestamp.to_string();
 	return os;
@@ -1058,7 +1067,10 @@ static std::ostream& operator<< (std::ostream& os, const Tag& tag)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log != nullptr)
+	{
+		std::lock_guard<std::mutex> lock(log->mutex_);		
 		log->metadata_.tag = tag;
+	}
 	else if (tag)
 		os << tag.text;
 	return os;
@@ -1070,7 +1082,10 @@ static std::ostream& operator<< (std::ostream& os, const Function& function)
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log != nullptr)
+	{
+		std::lock_guard<std::mutex> lock(log->mutex_);		
 		log->metadata_.function = function;
+	}
 	else if (function)
 		os << function.name;
 	return os;
@@ -1082,7 +1097,10 @@ static std::ostream& operator<< (std::ostream& os, const Conditional& conditiona
 {
 	Log* log = dynamic_cast<Log*>(os.rdbuf());
 	if (log != nullptr)
+	{
+		std::lock_guard<std::mutex> lock(log->mutex_);		
 		log->conditional_.set(conditional.is_true());
+	}
 	return os;
 }
 
