@@ -17,7 +17,7 @@
 using namespace std;
 
 
-int main(int argc, char** argv)
+int main(int /*argc*/, char** /*argv*/)
 {
 	AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
 	LOG(INFO) << "Logger with one cout log sink\n";
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 			make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
 				[](const AixLog::Metadata& metadata, const std::string& message)
 				{
-					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << static_cast<int>(metadata.severity) << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
 					if (metadata.timestamp)
 						cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
 					if (metadata.function)
