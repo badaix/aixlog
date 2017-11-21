@@ -56,15 +56,18 @@ This will print
 ```
 There are two overloads for `AixLog:Log::init`: 
 1. one creates and returns an instance of a Sink (as in the example above)
-```c++
-auto sink = AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
-```
+   ```c++
+   auto sink = AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+   ```
+   The `sink` can be used to change the severity or to remove it from the Logger
+ 
 2. one takes a vector of Sinks
-```c++
-auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
-auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "logfile.log");
-AixLog::Log::init({sink_cout, sink_file});
-```
+   ```c++
+   auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+   auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "logfile.log");
+   AixLog::Log::init({sink_cout, sink_file});
+   ```
+   This will log to both: `cout` and to file `logfile.log`
 
 ## Advanced usage
 You can easily fit AixLog to your needs by adding your own sink, that derives from the `Sink` class. Or even more simple, by using `SinkCallback` with a custom call back function:
