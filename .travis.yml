@@ -13,6 +13,8 @@ matrix:
     # build on osx
     - os: osx
       osx_image: xcode9.1
+    - os: osx
+      osx_image: xcode8
 before_install:
     - eval "${MATRIX_EVAL}"
 script:

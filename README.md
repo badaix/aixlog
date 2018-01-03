@@ -16,7 +16,7 @@ Header-only C++ logging library
 * Fancy name
 * Native support for various platforms (through Sinks)
   * Linux, Unix: Syslog
-  * macOS: Unified logging (os_log)
+  * macOS: Unified logging (os_log), Syslog (<10.12)
   * Android: Android Log
   * Windows: Event log, OutputDebugString
 * Several Sinks:
