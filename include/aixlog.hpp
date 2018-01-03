@@ -25,6 +25,14 @@
 #define HAS_SYSLOG_ 1
 #endif
 
+#ifdef __APPLE__
+#ifdef __MAC_OS_X_VERSION_MAX_ALLOWED
+#ifdef __MAC_OS_X_VERSION_MAX_ALLOWED >= 1012
+#define HAS_APPLE_UNIFIED_LOG_ 1
+#endif
+#endif
+#endif
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -38,11 +46,11 @@
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
-#ifdef __APPLE__
-#include <os/log.h>
-#endif
 #ifdef _WIN32
 #include <Windows.h>
+#endif
+#ifdef HAS_APPLE_UNIFIED_LOG
+#include <os/log.h>
 #endif
 #ifdef HAS_SYSLOG_
 #include <syslog.h>
@@ -725,7 +733,7 @@ struct SinkUnifiedLogging : public Sink
 	{
 	}
 
-#ifdef __APPLE__
+#ifdef HAS_APPLE_UNIFIED_LOG_
 	os_log_type_t get_os_log_type(Severity severity) const
 	{
 		// https://developer.apple.com/documentation/os/os_log_type_t?language=objc
@@ -751,7 +759,7 @@ struct SinkUnifiedLogging : public Sink
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-#ifdef __APPLE__
+#ifdef HAS_APPLE_UNIFIED_LOG_
 		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(metadata.severity), "%{public}s", message.c_str());
 #endif
 	}
@@ -947,7 +955,7 @@ struct SinkNative : public Sink
 	{
 #ifdef __ANDROID__
 		log_sink_ = std::make_shared<SinkAndroid>(ident_, severity, type);
-#elif __APPLE__
+#elif HAS_APPLE_UNIFIED_LOG_
 		log_sink_ = std::make_shared<SinkUnifiedLogging>(severity, type);
 #elif _WIN32
 		log_sink_ = std::make_shared<SinkEventLog>(severity, type);
