@@ -25,14 +25,6 @@
 #define HAS_SYSLOG_ 1
 #endif
 
-#ifdef __APPLE__
-#ifdef __MAC_OS_X_VERSION_MAX_ALLOWED
-#ifdef __MAC_OS_X_VERSION_MAX_ALLOWED >= 1012
-#define HAS_APPLE_UNIFIED_LOG_ 1
-#endif
-#endif
-#endif
-
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -46,11 +38,14 @@
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
+#ifdef __APPLE__
+#include <os/log.h>
+#endif
 #ifdef _WIN32
 #include <Windows.h>
-#endif
-#ifdef HAS_APPLE_UNIFIED_LOG
-#include <os/log.h>
+// We store the Windows ERROR macro to avoid conflict with enum ERROR.
+#pragma push_macro("ERROR")
+#undef ERROR
 #endif
 #ifdef HAS_SYSLOG_
 #include <syslog.h>
@@ -96,7 +91,7 @@ enum SEVERITY
 	INFO    = 2,
 	NOTICE  = 3,
 	WARNING = 4,
-	ERROR   = 5,
+        ERROR   = 5,
 	FATAL   = 6
 };
 
@@ -136,7 +131,6 @@ enum class Severity : std::int8_t
 	error   = SEVERITY::ERROR,
 	fatal   = SEVERITY::FATAL
 };
-
 
 
 /**
@@ -261,8 +255,11 @@ struct Timestamp
 	/// strftime format + proprietary "#ms" for milliseconds
 	std::string to_string(const std::string& format = "%Y-%m-%d %H-%M-%S.#ms") const
 	{
-		std::time_t now_c = std::chrono::system_clock::to_time_t(time_point);
-		struct::tm now_tm = *std::localtime(&now_c);
+		// Use namespace std because on windows 
+		// <ctime> is not a part of std;
+		using namespace std; 
+		time_t now_c = std::chrono::system_clock::to_time_t(time_point);
+		struct::tm now_tm = *localtime(&now_c);
 
 		char buffer[256];
 		strftime(buffer, sizeof buffer, format.c_str(), &now_tm);
@@ -733,7 +730,7 @@ struct SinkUnifiedLogging : public Sink
 	{
 	}
 
-#ifdef HAS_APPLE_UNIFIED_LOG_
+#ifdef __APPLE__
 	os_log_type_t get_os_log_type(Severity severity) const
 	{
 		// https://developer.apple.com/documentation/os/os_log_type_t?language=objc
@@ -759,7 +756,7 @@ struct SinkUnifiedLogging : public Sink
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-#ifdef HAS_APPLE_UNIFIED_LOG_
+#ifdef __APPLE__
 		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(metadata.severity), "%{public}s", message.c_str());
 #endif
 	}
@@ -892,7 +889,7 @@ protected:
  */
 struct SinkEventLog : public Sink
 {
-	SinkEventLog(const std::string& ident, Severity severity, Type type = Type::all) : Sink(severity, type)
+        SinkEventLog(const std::string& ident, Severity severity, Type type = Type::all) : Sink(severity, type)
 	{
 #ifdef _WIN32
 		event_log = RegisterEventSource(NULL, ident.c_str());
@@ -925,7 +922,8 @@ struct SinkEventLog : public Sink
 	void log(const Metadata& metadata, const std::string& message) override
 	{
 #ifdef _WIN32
-		ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
+                const char* c_str = message.c_str(); // Because we cannot take address of rvalue we need to store it temporaly
+                ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &c_str, NULL);
 #endif
 	}
 
@@ -955,10 +953,10 @@ struct SinkNative : public Sink
 	{
 #ifdef __ANDROID__
 		log_sink_ = std::make_shared<SinkAndroid>(ident_, severity, type);
-#elif HAS_APPLE_UNIFIED_LOG_
+#elif __APPLE__
 		log_sink_ = std::make_shared<SinkUnifiedLogging>(severity, type);
 #elif _WIN32
-		log_sink_ = std::make_shared<SinkEventLog>(severity, type);
+                log_sink_ = std::make_shared<SinkEventLog>(ident.c_str(), severity, type);
 #elif HAS_SYSLOG_
 		log_sink_ = std::make_shared<SinkSyslog>(ident_.c_str(), severity, type);
 #else
@@ -1152,6 +1150,12 @@ static std::ostream& operator<< (std::ostream& os, const Color& color)
 
 } // namespace AixLog
 
+
+
+#ifdef _WIN32
+//We restore the windows ERROR macro
+#pragma pop_macro("ERROR")
+#endif
 
 #endif // AIX_LOG_HPP
 
