@@ -3,12 +3,12 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.0.0
+    version 1.0.1
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
     Copyright (C) 2017  Johannes Pohl
-    
+
     This software may be modified and distributed under the terms
     of the MIT license.  See the LICENSE file for details.
 ***/
@@ -263,6 +263,10 @@ struct Timestamp
 	{
 	}
 
+	Timestamp(time_point_sys_clock&& time_point) : time_point(std::move(time_point)), is_null_(false)
+	{
+	}
+
 	virtual explicit operator bool() const
 	{
 		return !is_null_;
@@ -314,6 +318,10 @@ struct Tag
 	{
 	}
 
+	Tag(std::string&& text) : text(std::move(text)), is_null_(false)
+	{
+	}
+
 	virtual explicit operator bool() const
 	{
 		return !is_null_;
@@ -335,6 +343,11 @@ struct Function
 {
 	Function(const std::string& name, const std::string& file, size_t line) :
 		name(name), file(file), line(line), is_null_(false)
+	{
+	}
+
+	Function(std::string&& name, std::string&& file, size_t line) :
+		name(std::move(name)), file(std::move(file)), line(line), is_null_(false)
 	{
 	}
 
@@ -588,7 +601,7 @@ private:
  */
 struct SinkFormat : public Sink
 {
-	SinkFormat(Severity severity, Type type, const std::string& format = "%Y-%m-%d %H-%M-%S [#severity] (#tag_func)") :
+	SinkFormat(Severity severity, Type type, const std::string& format) :
 		Sink(severity, type),
 		format_(format)
 	{
@@ -634,7 +647,7 @@ protected:
 		else
 		{
 			if (result.empty() || (result.back() == ' '))
-				stream << message << std::endl;
+				stream << result << message << std::endl;
 			else
 				stream << result << " " << message << std::endl;
 		}
