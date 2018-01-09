@@ -52,10 +52,12 @@
 #ifdef _WIN32
 #include <Windows.h>
 // ERROR macro is defined in Windows header
-// To avoid conflict between this macro and declaration of ERROR in SEVERITY enum
+// To avoid conflict between these macro and declaration of ERROR / DEBUG in SEVERITY enum
 // We save macro and undef it
 #pragma push_macro("ERROR")
+#pragma push_macro("DEBUG")
 #undef ERROR
+#undef DEBUG
 #endif
 
 #ifdef HAS_APPLE_UNIFIED_LOG
@@ -1168,6 +1170,7 @@ static std::ostream& operator<< (std::ostream& os, const Color& color)
 #ifdef _WIN32
 // We restore the ERROR Windows macro
 #pragma pop_macro("ERROR")
+#prgame pop_macro("DEBUG")
 #endif
 
 #endif // AIX_LOG_HPP
