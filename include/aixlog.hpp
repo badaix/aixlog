@@ -43,15 +43,25 @@
 #include <mutex>
 #include <sstream>
 #include <vector>
+#include <ctime>
+
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
+
 #ifdef _WIN32
 #include <Windows.h>
+// ERROR macro is defined in Windows header
+// To avoid conflict between this macro and declaration of ERROR in SEVERITY enum
+// We save macro and undef it
+#pragma push_macro("ERROR")
+#undef ERROR
 #endif
+
 #ifdef HAS_APPLE_UNIFIED_LOG
 #include <os/log.h>
 #endif
+
 #ifdef HAS_SYSLOG_
 #include <syslog.h>
 #endif
@@ -925,7 +935,9 @@ struct SinkEventLog : public Sink
 	void log(const Metadata& metadata, const std::string& message) override
 	{
 #ifdef _WIN32
-		ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &message.c_str(), NULL);
+		// We need this temp variable because we cannot take address of rValue
+		const char* c_str = message.c_str(); 
+		ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &c_str, NULL);
 #endif
 	}
 
@@ -958,7 +970,7 @@ struct SinkNative : public Sink
 #elif HAS_APPLE_UNIFIED_LOG_
 		log_sink_ = std::make_shared<SinkUnifiedLogging>(severity, type);
 #elif _WIN32
-		log_sink_ = std::make_shared<SinkEventLog>(severity, type);
+		log_sink_ = std::make_shared<SinkEventLog>(ident, severity, type);
 #elif HAS_SYSLOG_
 		log_sink_ = std::make_shared<SinkSyslog>(ident_.c_str(), severity, type);
 #else
@@ -1152,6 +1164,11 @@ static std::ostream& operator<< (std::ostream& os, const Color& color)
 
 } // namespace AixLog
 
+
+#ifdef _WIN32
+// We restore the ERROR Windows macro
+#pragma pop_macro("ERROR")
+#endif
 
 #endif // AIX_LOG_HPP
 
