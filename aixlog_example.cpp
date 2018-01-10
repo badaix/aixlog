@@ -72,7 +72,7 @@ int main(int /*argc*/, char** /*argv*/)
 	LOG(WARNING) << "LOG(WARNING)";
 	LOG(NOTICE) << "LOG(NOTICE)";
 	LOG(INFO) << "LOG(INFO)\n";
-	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
+	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")\n";
 	LOG(DEBUG) << "LOG(DEBUG)\n";
 	LOG(TRACE) << "LOG(TRACE)\n";
 
