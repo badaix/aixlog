@@ -15,7 +15,7 @@ project(aixlog_test)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(PROJECT_VERSION "1.0.2")
+set(PROJECT_VERSION "1.0.3")
 
 
 include_directories(
