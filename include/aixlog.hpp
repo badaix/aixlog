@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.0.3
+    version 1.0.4
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -536,6 +536,11 @@ public:
 protected:
 	Log() noexcept
 	{
+	}
+
+	virtual ~Log()
+	{
+		sync();
 	}
 
 	int sync() override
