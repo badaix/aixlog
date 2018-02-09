@@ -3,11 +3,11 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.0.4
+    version 1.1.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
-    Copyright (C) 2017  Johannes Pohl
+    Copyright (C) 2017-2018 Johannes Pohl
 
     This software may be modified and distributed under the terms
     of the MIT license.  See the LICENSE file for details.
@@ -442,6 +442,8 @@ static std::ostream& operator<< (std::ostream& os, const Timestamp& timestamp);
 static std::ostream& operator<< (std::ostream& os, const Tag& tag);
 static std::ostream& operator<< (std::ostream& os, const Function& function);
 static std::ostream& operator<< (std::ostream& os, const Conditional& conditional);
+static std::ostream& operator<< (std::ostream& os, const Color& color);
+static std::ostream& operator<< (std::ostream& os, const TextColor& text_color);
 
 using log_sink_ptr = std::shared_ptr<Sink>;
 
@@ -470,8 +472,6 @@ public:
 
 		for (const auto& sink: log_sinks)
 			Log::instance().add_logsink(sink);
-
-		std::clog.rdbuf(&Log::instance());
 	}
 
 	template<typename T, typename... Ts>
@@ -536,6 +536,8 @@ public:
 protected:
 	Log() noexcept
 	{
+		std::clog.rdbuf(this);
+		std::clog << Severity() << Type::normal << Tag() << Function() << Conditional() << AixLog::Color::NONE << std::flush;
 	}
 
 	virtual ~Log()

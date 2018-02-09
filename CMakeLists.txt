@@ -4,18 +4,17 @@
 # \_/\_/(__)(_/\_)\____/ \__/  \___/
 
 # This file is part of aixlog
-# Copyright (C) 2017  Johannes Pohl
+# Copyright (C) 2017-2018 Johannes Pohl
 
 # This software may be modified and distributed under the terms
 # of the MIT license.  See the LICENSE file for details.
 
-cmake_minimum_required(VERSION 2.4) 
+cmake_minimum_required(VERSION 3.0.0)
 
-project(aixlog_test)
+project(aixlog_test VERSION 1.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(PROJECT_VERSION "1.0.4")
 
 
 include_directories(
