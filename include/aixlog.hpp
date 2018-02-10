@@ -60,7 +60,7 @@
 #undef DEBUG
 #endif
 
-#ifdef HAS_APPLE_UNIFIED_LOG
+#ifdef HAS_APPLE_UNIFIED_LOG_
 #include <os/log.h>
 #endif
 
