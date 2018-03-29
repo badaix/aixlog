@@ -11,21 +11,32 @@
 
 cmake_minimum_required(VERSION 3.0.0)
 
-project(aixlog_test VERSION 1.1.0 LANGUAGES CXX)
+project(aixlog VERSION 1.2.0 LANGUAGES CXX)
+set(PROJECT_DESCRIPTION "Header-only C++ logging library")
+set(PROJECT_URL "https://github.com/badaix/aixlog")
+
+option(BUILD_EXAMPLE "Build example (build aixlog_example demo)" ON)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+
+if(NOT DEFINED CMAKE_INSTALL_INCLUDEDIR)
+    SET(CMAKE_INSTALL_INCLUDEDIR include CACHE
+        PATH "Output directory for header files")
+endif()
 
 
 include_directories(
 	"include"
 )
 
-add_executable(aixlog_example
-	aixlog_example.cpp
-)
+if (BUILD_EXAMPLE)
+	add_executable(aixlog_example aixlog_example.cpp)
+	if (${CMAKE_SYSTEM_NAME} MATCHES "Android")
+		target_link_libraries(aixlog_example log atomic)
+	endif()
+endif (BUILD_EXAMPLE)
 
 
-SET(CMAKE_INSTALL_INCLUDEDIR include CACHE PATH "Output directory for header files")
-		
 install(FILES include/aixlog.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
