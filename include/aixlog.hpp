@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.1.0
+    version 1.2.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -69,6 +69,19 @@
 #endif
 
 
+#ifdef __ANDROID__
+// fix for bug "Android NDK __func__ definition is inconsistent with glibc and C++99"
+// https://bugs.chromium.org/p/chromium/issues/detail?id=631489
+	#ifdef __GNUC__
+		#define	AIXLOG_INTERNAL__FUNC __FUNCTION__
+	#else
+		#define	AIXLOG_INTERNAL__FUNC __func__
+	#endif
+#else
+	#define	AIXLOG_INTERNAL__FUNC __func__
+#endif
+
+
 /// Internal helper macros (exposed, but shouldn't be used directly)
 #define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_)
 #define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG(TAG_)
@@ -90,7 +103,7 @@
 // e.g.: COLOR(yellow, blue) or COLOR(red)
 #define COLOR(...) AIXLOG_INTERNAL__VAR_PARM(,##__VA_ARGS__, AIXLOG_INTERNAL__TWO_COLOR(__VA_ARGS__), AIXLOG_INTERNAL__ONE_COLOR(__VA_ARGS__))
 
-#define FUNC AixLog::Function(__func__, __FILE__, __LINE__)
+#define FUNC AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
 #define TAG AixLog::Tag
 #define COND AixLog::Conditional
 #define SPECIAL AixLog::Type::special
@@ -744,6 +757,7 @@ protected:
 
 
 
+#ifdef _WIN32
 /**
  * @brief
  * Windows: Logging to OutputDebugString
@@ -758,14 +772,14 @@ struct SinkOutputDebugString : public Sink
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-#ifdef _WIN32
 		OutputDebugString(message.c_str());
-#endif
 	}
 };
+#endif
 
 
 
+#ifdef HAS_APPLE_UNIFIED_LOG_
 /**
  * @brief
  * macOS: Logging to Apples system logger
@@ -776,7 +790,6 @@ struct SinkUnifiedLogging : public Sink
 	{
 	}
 
-#ifdef HAS_APPLE_UNIFIED_LOG_
 	os_log_type_t get_os_log_type(Severity severity) const
 	{
 		// https://developer.apple.com/documentation/os/os_log_type_t?language=objc
@@ -798,18 +811,17 @@ struct SinkUnifiedLogging : public Sink
 				return OS_LOG_TYPE_DEFAULT;
 		}
 	}
-#endif
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-#ifdef HAS_APPLE_UNIFIED_LOG_
 		os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(metadata.severity), "%{public}s", message.c_str());
-#endif
 	}
 };
+#endif
 
 
 
+#ifdef HAS_SYSLOG_
 /**
  * @brief
  * UNIX: Logging to syslog
@@ -818,19 +830,14 @@ struct SinkSyslog : public Sink
 {
 	SinkSyslog(const char* ident, Severity severity, Type type) : Sink(severity, type)
 	{
-#ifdef HAS_SYSLOG_
 		openlog(ident, LOG_PID, LOG_USER);
-#endif
 	}
 
 	~SinkSyslog() override
 	{
-#ifdef HAS_SYSLOG_
 		closelog();
-#endif
 	}
 
-#ifdef HAS_SYSLOG_
 	int get_syslog_priority(Severity severity) const
 	{
 		// http://unix.superglobalmegacorp.com/Net2/newsrc/sys/syslog.h.html
@@ -853,19 +860,18 @@ struct SinkSyslog : public Sink
 				return LOG_INFO;
 		}
 	}
-#endif
 
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-#ifdef HAS_SYSLOG_
 		syslog(get_syslog_priority(metadata.severity), "%s", message.c_str());
-#endif
 	}
 };
+#endif
 
 
 
+#ifdef __ANDROID__
 /**
  * @brief
  * Android: Logging to android log
@@ -878,7 +884,6 @@ struct SinkAndroid : public Sink
 	{
 	}
 
-#ifdef __ANDROID__
 	android_LogPriority get_android_prio(Severity severity) const
 	{
 		// https://developer.android.com/ndk/reference/log_8h.html
@@ -901,11 +906,9 @@ struct SinkAndroid : public Sink
 				return ANDROID_LOG_UNKNOWN;
 		}
 	}
-#endif
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-#ifdef __ANDROID__
 		std::string tag = metadata.tag?metadata.tag.text:(metadata.function?metadata.function.name:"");
 		std::string log_tag;
 		if (!ident_.empty() && !tag.empty())
@@ -918,15 +921,15 @@ struct SinkAndroid : public Sink
 			log_tag = "log";
 
 		__android_log_write(get_android_prio(metadata.severity), log_tag.c_str(), message.c_str());
-#endif
 	}
 
 protected:
 	std::string ident_;
 };
+#endif
 
 
-
+#ifdef _WIN32
 /**
  * @brief
  * Windows: Logging to event logger
@@ -937,12 +940,9 @@ struct SinkEventLog : public Sink
 {
 	SinkEventLog(const std::string& ident, Severity severity, Type type = Type::all) : Sink(severity, type)
 	{
-#ifdef _WIN32
 		event_log = RegisterEventSource(NULL, ident.c_str());
-#endif
 	}
 
-#ifdef _WIN32
 	WORD get_type(Severity severity) const
 	{
 		// https://msdn.microsoft.com/de-de/library/windows/desktop/aa363679(v=vs.85).aspx
@@ -963,22 +963,18 @@ struct SinkEventLog : public Sink
 				return EVENTLOG_INFORMATION_TYPE;
 		}
 	}
-#endif
 
 	void log(const Metadata& metadata, const std::string& message) override
 	{
-#ifdef _WIN32
 		// We need this temp variable because we cannot take address of rValue
 		const char* c_str = message.c_str(); 
 		ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &c_str, NULL);
-#endif
 	}
 
 protected:
-#ifdef _WIN32
 	HANDLE event_log;
-#endif
 };
+#endif
 
 
 
