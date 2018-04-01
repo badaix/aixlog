@@ -293,11 +293,10 @@ struct Timestamp
 	std::string to_string(const std::string& format = "%Y-%m-%d %H-%M-%S.#ms") const
 	{
 		std::time_t now_c = std::chrono::system_clock::to_time_t(time_point);
-		struct::tm now_tm = *std::localtime(&now_c);
-
+		struct::tm* now_tm = std::localtime(&now_c);
 		char buffer[256];
-		strftime(buffer, sizeof buffer, format.c_str(), &now_tm);
-		std::string result = buffer;
+		strftime(buffer, sizeof buffer, format.c_str(), now_tm);
+		std::string result(buffer);
 		size_t pos = result.find("#ms");
 		if (pos != std::string::npos)
 		{
