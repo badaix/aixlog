@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.2.0
+    version 1.2.1
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -284,7 +284,7 @@ struct Timestamp
 
 	virtual ~Timestamp() = default;
 
-	virtual explicit operator bool() const
+	explicit operator bool() const
 	{
 		return !is_null_;
 	}
@@ -340,7 +340,7 @@ struct Tag
 
 	virtual ~Tag() = default;
 
-	virtual explicit operator bool() const
+	explicit operator bool() const
 	{
 		return !is_null_;
 	}
@@ -379,7 +379,7 @@ struct Function
 
 	virtual ~Function() = default;
 
-	virtual explicit operator bool() const
+	explicit operator bool() const
 	{
 		return !is_null_;
 	}
