@@ -297,7 +297,7 @@ private:
 
     inline std::tm localtime_xp(std::time_t timer) const
     {
-        std::tm bt{};
+        std::tm bt;
 #if defined(__unix__)
         localtime_r(&timer, &bt);
 #elif defined(_MSC_VER)
