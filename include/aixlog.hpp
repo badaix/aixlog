@@ -515,7 +515,7 @@ public:
             case Severity::warning:
                 return "Warn";
             case Severity::error:
-                return "Err";
+                return "Error";
             case Severity::fatal:
                 return "Fatal";
             default:
