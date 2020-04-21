@@ -11,11 +11,7 @@
 
 cmake_minimum_required(VERSION 3.0.0)
 
-<<<<<<< HEAD
-project(aixlog VERSION 1.2.2 LANGUAGES CXX)
-=======
-project(aixlog VERSION 1.2.4 LANGUAGES CXX)
->>>>>>> master
+project(aixlog VERSION 1.4.0 LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "Header-only C++ logging library")
 set(PROJECT_URL "https://github.com/badaix/aixlog")
 
