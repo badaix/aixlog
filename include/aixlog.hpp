@@ -3,11 +3,11 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.2.2
+    version 1.3.0
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
-    Copyright (C) 2017-2019 Johannes Pohl
+    Copyright (C) 2017-2020 Johannes Pohl
 
     This software may be modified and distributed under the terms
     of the MIT license.  See the LICENSE file for details.
@@ -25,7 +25,7 @@
 
 #ifdef __APPLE__
 #ifdef __MAC_OS_X_VERSION_MAX_ALLOWED
-#ifdef __MAC_OS_X_VERSION_MAX_ALLOWED >= 1012
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 1012
 #define HAS_APPLE_UNIFIED_LOG_ 1
 #endif
 #endif
@@ -40,6 +40,8 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <map>
+#include <thread>
 #include <sstream>
 #include <vector>
 
@@ -79,7 +81,7 @@
 #endif
 
 /// Internal helper macros (exposed, but shouldn't be used directly)
-#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_)
+#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG()
 #define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG(TAG_)
 
 #define AIXLOG_INTERNAL__ONE_COLOR(FG_) AixLog::Color::FG_
@@ -275,17 +277,17 @@ struct Timestamp
     std::string to_string(const std::string& format = "%Y-%m-%d %H-%M-%S.#ms") const
     {
         std::time_t now_c = std::chrono::system_clock::to_time_t(time_point);
-        struct ::tm* now_tm = std::localtime(&now_c);
+        struct ::tm now_tm = localtime_xp(now_c);
         char buffer[256];
-        strftime(buffer, sizeof buffer, format.c_str(), now_tm);
+        strftime(buffer, sizeof buffer, format.c_str(), &now_tm);
         std::string result(buffer);
         size_t pos = result.find("#ms");
         if (pos != std::string::npos)
         {
             int ms_part = std::chrono::time_point_cast<std::chrono::milliseconds>(time_point).time_since_epoch().count() % 1000;
             char ms_str[4];
-            sprintf(&ms_str[0], "%03d", ms_part);
-            result.replace(pos, 3, ms_str);
+            if (snprintf(ms_str, 4, "%03d", ms_part) >= 0)
+                result.replace(pos, 3, ms_str);
         }
         return result;
     }
@@ -294,6 +296,21 @@ struct Timestamp
 
 private:
     bool is_null_;
+
+    inline std::tm localtime_xp(std::time_t timer) const
+    {
+        std::tm bt;
+#if defined(__unix__)
+        localtime_r(&timer, &bt);
+#elif defined(_MSC_VER)
+        localtime_s(&bt, &timer);
+#else
+        static std::mutex mtx;
+        std::lock_guard<std::mutex> lock(mtx);
+        bt = *std::localtime(&timer);
+#endif
+        return bt;
+    }
 };
 
 /**
@@ -500,7 +517,7 @@ public:
             case Severity::warning:
                 return "Warn";
             case Severity::error:
-                return "Err";
+                return "Error";
             case Severity::fatal:
                 return "Fatal";
             default:
@@ -511,7 +528,7 @@ public:
     }
 
 protected:
-    Log() noexcept
+    Log() noexcept : last_id_(-1), last_buffer_(nullptr)
     {
         std::clog.rdbuf(this);
         std::clog << Severity() << Type::normal << Tag() << Function() << Conditional() << AixLog::Color::NONE << std::flush;
@@ -525,7 +542,7 @@ protected:
     int sync() override
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
-        if (!buffer_.str().empty())
+        if (!get_stream().str().empty())
         {
             if (conditional_.is_true())
             {
@@ -533,11 +550,11 @@ protected:
                 {
                     if ((metadata_.type == Type::all) || (sink->get_type() == Type::all) || (metadata_.type == sink->get_type()))
                         if (metadata_.severity >= sink->severity)
-                            sink->log(metadata_, buffer_.str());
+                            sink->log(metadata_, get_stream().str());
                 }
             }
-            buffer_.str("");
-            buffer_.clear();
+            get_stream().str("");
+            get_stream().clear();
         }
 
         return 0;
@@ -551,7 +568,7 @@ protected:
             if (c == '\n')
                 sync();
             else
-                buffer_ << static_cast<char>(c);
+                get_stream() << static_cast<char>(c);
         }
         else
         {
@@ -568,7 +585,20 @@ private:
     friend std::ostream& operator<<(std::ostream& os, const Function& function);
     friend std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
 
-    std::stringstream buffer_;
+    std::stringstream& get_stream()
+    {
+        auto id = std::this_thread::get_id();
+        if ((last_buffer_ == nullptr) || (last_id_ != id))
+        {
+            last_id_ = id;
+            last_buffer_ = &(buffer_[id]);
+        }
+        return *last_buffer_;
+    }
+
+    std::map<std::thread::id, std::stringstream> buffer_;
+    std::thread::id last_id_;
+    std::stringstream* last_buffer_ = nullptr;
     Metadata metadata_;
     Conditional conditional_;
     std::vector<log_sink_ptr> log_sinks_;
@@ -612,6 +642,14 @@ protected:
         size_t pos = result.find("#severity");
         if (pos != std::string::npos)
             result.replace(pos, 9, Log::to_string(metadata.severity));
+
+        pos = result.find("#color_severity");
+        if (pos != std::string::npos)
+        {
+            std::stringstream ss;
+            ss << TextColor(Color::RED) << Log::to_string(metadata.severity) << TextColor(Color::NONE);
+            result.replace(pos, 15, ss.str());
+        }
 
         pos = result.find("#tag_func");
         if (pos != std::string::npos)

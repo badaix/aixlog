@@ -2,8 +2,9 @@
 
 Header-only C++ logging library
 
-[![Build Status](https://travis-ci.org/badaix/aixlog.svg?branch=master)](https://travis-ci.org/badaix/aixlog)
 [![Github Releases](https://img.shields.io/github/release/badaix/aixlog.svg)](https://github.com/badaix/aixlog/releases)
+[![Build Status](https://travis-ci.org/badaix/aixlog.svg?branch=master)](https://travis-ci.org/badaix/aixlog)
+[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/badaix/aixlog.svg)](https://lgtm.com/projects/g/badaix/aixlog/context:cpp)  
 
 ## Features
 * Single header file implementation

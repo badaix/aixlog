@@ -9,6 +9,9 @@ BIN = aixlog_example
 
 all:	$(TARGET)
 
+reformat:
+	clang-format -i include/aixlog.hpp
+
 $(TARGET): $(OBJ)
 	$(CXX) $(CXXFLAGS) -o $(BIN) $(OBJ) $(LDFLAGS)
 	strip $(BIN)
