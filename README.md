@@ -7,6 +7,7 @@ Header-only C++ logging library
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/badaix/aixlog.svg)](https://lgtm.com/projects/g/badaix/aixlog/context:cpp)  
 
 ## Features
+
 * Single header file implementation
   * Simply include and use it!
   * No dependcies, just vanilla C++11
@@ -38,68 +39,81 @@ Header-only C++ logging library
     ...is the same as...  
     `LOG(INFO) << TAG("my tag") << "some message"`
   * Capture function and line number and timestamp
-  * Two different log types "normal" and "special": `LOG(INFO) << SPECIAL << "some special message"`
-    * special might be used for syslog, while normal is used for console output
-    * => Only special tagged messages will go to syslog
+  * Filters: filter by tag and/or by severity what message is logged where, e.g.
+    * Add a syslog sink with the filters `*:error`, `SYSLOG:trace` to recive only messages with severiy `error` or with tag `SYSLOG`
+    * Add another `cout` sink with filter `*:debug` to receive all messages with `debug` or higher severity
   * Support for colors:
     * Foreground: `LOG(INFO) << COLOR(red) << "red foreground"`
     * Foreground and background: `LOG(INFO) << COLOR(yellow, blue) << "yellow on blue background"`
 
 ## Basic usage
+
 To use AixLog, you must once pass a log sink to `AixLog:Log::init`, e.g. a `SinkCout`:
+
 ```c++
 AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
 LOG(INFO) << "Hello, World!\n";
 ```
+
 This will print
+
 ```
 2017-09-28 11-01-16.049 [Info] (main) Hello, World!
 ```
-There are two overloads for `AixLog:Log::init`: 
+
+There are two overloads for `AixLog:Log::init`:
+
 1. one creates and returns an instance of a Sink (as in the example above)
+
    ```c++
    auto sink = AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
    ```
-   The `sink` can be used to change the severity or to remove it from the Logger
- 
+
+The `sink` can be used to change the severity or to remove it from the Logger
 2. one takes a vector of Sinks
+
    ```c++
    auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
    auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "logfile.log");
    AixLog::Log::init({sink_cout, sink_file});
    ```
-   This will log to both: `cout` and to file `logfile.log`
+
+This will log to both: `cout` and to file `logfile.log`
 
 ## Advanced usage
+
 You can easily fit AixLog to your needs by adding your own sink, that derives from the `Sink` class. Or even more simple, by using `SinkCallback` with a custom call back function:
+
 ```c++
 AixLog::Log::init<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
-	[](const AixLog::Metadata& metadata, const std::string& message)
-	{
-		cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
-		if (metadata.timestamp)
-			cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
-		if (metadata.function)
-			cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
-	}
+    [](const AixLog::Metadata& metadata, const std::string& message)
+    {
+        cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+        if (metadata.timestamp)
+            cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
+        if (metadata.function)
+            cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
+    }
 );
 LOG(INFO) << TAG("test") << "Hello, Lambda!\n";
 ```
+
 This will print
+
 ```
 Callback:
-	msg:   Hello, Lambda!
-	tag:   test
-	sever: Info (2)
-	type:  normal
-	time:  2017-09-28 11-46-32.179
-	func:  main
-	line:  36
-	file:  aixlog_test.cpp
+    msg:   Hello, Lambda!
+    tag:   test
+    sever: Info (2)
+    type:  normal
+    time:  2017-09-28 11-46-32.179
+    func:  main
+    line:  36
+    file:  aixlog_test.cpp
 ```
 
-
 ## Usage example
+
 ```c++
 #include "aixlog.hpp"
 
@@ -107,64 +121,64 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	AixLog::Log::init(
-		{
-			/// Log normal (i.e. non-special) logs to SinkCout
-			make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #message"),
-			/// Log error and higher severity messages to cerr
-			make_shared<AixLog::SinkCerr>(AixLog::Severity::error, AixLog::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)"),
-			/// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
-			make_shared<AixLog::SinkNative>("aixlog", AixLog::Severity::trace, AixLog::Type::special),
-			/// Callback log sink with cout logging in a lambda function
-			/// Could also do file logging
-			make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
-				[](const AixLog::Metadata& metadata, const std::string& message)
-				{
-					cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
-					if (metadata.timestamp)
-						cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
-					if (metadata.function)
-						cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
-				}
-			)
-		}
-	);
+    AixLog::Log::init(
+        {
+            /// Log normal (i.e. non-special) logs to SinkCout
+            make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #message"),
+            /// Log error and higher severity messages to cerr
+            make_shared<AixLog::SinkCerr>(AixLog::Severity::error, AixLog::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)"),
+            /// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
+            make_shared<AixLog::SinkNative>("aixlog", AixLog::Severity::trace, AixLog::Type::special),
+            /// Callback log sink with cout logging in a lambda function
+            /// Could also do file logging
+            make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
+                [](const AixLog::Metadata& metadata, const std::string& message)
+                {
+                    cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+                    if (metadata.timestamp)
+                        cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
+                    if (metadata.function)
+                        cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
+                }
+            )
+        }
+    );
 
-	/// Log with info severity
-	LOG(INFO) << "LOG(INFO)\n";
-	/// ... with a tag
-	LOG(INFO, "guten tag") << "LOG(INFO, \"guten tag\")\n";
-	/// ... with an explicit tag (same result as above)
-	LOG(INFO) << TAG("guten tag") << "LOG(INFO) << TAG(\"guten tag\")\n";
-	/// Log "special" with info severity
-	SLOG(INFO) << "SLOG(INFO)\n";
-	/// Log with explicit "special" type
-	LOG(INFO) << AixLog::Type::special << "LOG(INFO) << AixLog::Type::special\n";
-	/// Log with explicit "special" type (now with a macro)
-	LOG(INFO) << SPECIAL << "LOG(INFO) << SPECIAL\n";
-	/// ... with explicit "special" type and explicit tag
-	LOG(INFO) << SPECIAL << TAG("guten tag") << "LOG(INFO) << SPECIAL << TAG(\"guten tag\")\n";
+    /// Log with info severity
+    LOG(INFO) << "LOG(INFO)\n";
+    /// ... with a tag
+    LOG(INFO, "guten tag") << "LOG(INFO, \"guten tag\")\n";
+    /// ... with an explicit tag (same result as above)
+    LOG(INFO) << TAG("guten tag") << "LOG(INFO) << TAG(\"guten tag\")\n";
+    /// Log "special" with info severity
+    SLOG(INFO) << "SLOG(INFO)\n";
+    /// Log with explicit "special" type
+    LOG(INFO) << AixLog::Type::special << "LOG(INFO) << AixLog::Type::special\n";
+    /// Log with explicit "special" type (now with a macro)
+    LOG(INFO) << SPECIAL << "LOG(INFO) << SPECIAL\n";
+    /// ... with explicit "special" type and explicit tag
+    LOG(INFO) << SPECIAL << TAG("guten tag") << "LOG(INFO) << SPECIAL << TAG(\"guten tag\")\n";
 
-	/// Different log severities
-	LOG(FATAL) << "LOG(FATAL)\nLOG(FATAL) Second line\n";
-	LOG(FATAL) << TAG("hello") << "LOG(FATAL) << TAG(\"hello\") no line break";
-	LOG(FATAL) << "LOG(FATAL) 2 no line break";
-	LOG(ERROR) << "LOG(ERROR): change in log-level will add a line break";
-	LOG(WARNING) << "LOG(WARNING)";
-	LOG(NOTICE) << "LOG(NOTICE)";
-	LOG(INFO) << "LOG(INFO)\n";
-	LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
-	LOG(DEBUG) << "LOG(DEBUG)\n";
-	LOG(TRACE) << "LOG(TRACE)\n";
+    /// Different log severities
+    LOG(FATAL) << "LOG(FATAL)\nLOG(FATAL) Second line\n";
+    LOG(FATAL) << TAG("hello") << "LOG(FATAL) << TAG(\"hello\") no line break";
+    LOG(FATAL) << "LOG(FATAL) 2 no line break";
+    LOG(ERROR) << "LOG(ERROR): change in log-level will add a line break";
+    LOG(WARNING) << "LOG(WARNING)";
+    LOG(NOTICE) << "LOG(NOTICE)";
+    LOG(INFO) << "LOG(INFO)\n";
+    LOG(INFO) << TAG("my tag") << "LOG(INFO) << TAG(\"my tag\")n";
+    LOG(DEBUG) << "LOG(DEBUG)\n";
+    LOG(TRACE) << "LOG(TRACE)\n";
 
-	/// Conditional logging
-	LOG(DEBUG) << COND(1 == 1) << "LOG(DEBUG) will be logged\n";
-	LOG(DEBUG) << COND(1 == 2) << "LOG(DEBUG) will not be logged\n";
+    /// Conditional logging
+    LOG(DEBUG) << COND(1 == 1) << "LOG(DEBUG) will be logged\n";
+    LOG(DEBUG) << COND(1 == 2) << "LOG(DEBUG) will not be logged\n";
 
-	/// Colors :-)
-	LOG(FATAL) << "LOG(FATAL) " << AixLog::Color::red << "red" << AixLog::Color::none << ", default color\n";
-	LOG(FATAL) << "LOG(FATAL) " << COLOR(red) << "red" << COLOR(none) << ", default color (using macros)\n";
-	LOG(FATAL) << "LOG(FATAL) " << AixLog::TextColor(AixLog::Color::yellow, AixLog::Color::blue) << "yellow on blue background" << AixLog::Color::none << ", default color\n";
-	LOG(FATAL) << "LOG(FATAL) " << COLOR(yellow, blue) << "yellow on blue background" << COLOR(none) << ", default color (using macros)\n";
+    /// Colors :-)
+    LOG(FATAL) << "LOG(FATAL) " << AixLog::Color::red << "red" << AixLog::Color::none << ", default color\n";
+    LOG(FATAL) << "LOG(FATAL) " << COLOR(red) << "red" << COLOR(none) << ", default color (using macros)\n";
+    LOG(FATAL) << "LOG(FATAL) " << AixLog::TextColor(AixLog::Color::yellow, AixLog::Color::blue) << "yellow on blue background" << AixLog::Color::none << ", default color\n";
+    LOG(FATAL) << "LOG(FATAL) " << COLOR(yellow, blue) << "yellow on blue background" << COLOR(none) << ", default color (using macros)\n";
 }
 ```
