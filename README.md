@@ -70,6 +70,7 @@ There are two overloads for `AixLog:Log::init`:
    ```
 
 The `sink` can be used to change the severity or to remove it from the Logger
+
 2. one takes a vector of Sinks
 
    ```c++
