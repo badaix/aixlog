@@ -40,7 +40,7 @@ Header-only C++ logging library
     `LOG(INFO) << TAG("my tag") << "some message"`
   * Capture function and line number and timestamp
   * Filters: filter by tag and/or by severity what message is logged where, e.g.
-    * Add a syslog sink with the filters `*:error`, `SYSLOG:trace` to recive only messages with severiy `error` or with tag `SYSLOG`
+    * Add a syslog sink with the filters `*:error`, `SYSLOG:trace` to receive only messages with severity `error` or with tag `SYSLOG`
     * Add another `cout` sink with filter `*:debug` to receive all messages with `debug` or higher severity
   * Support for colors:
     * Foreground: `LOG(INFO) << COLOR(red) << "red foreground"`
