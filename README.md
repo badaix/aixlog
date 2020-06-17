@@ -150,14 +150,6 @@ int main(int argc, char** argv)
     LOG(INFO, "guten tag") << "LOG(INFO, \"guten tag\")\n";
     /// ... with an explicit tag (same result as above)
     LOG(INFO) << TAG("guten tag") << "LOG(INFO) << TAG(\"guten tag\")\n";
-    /// Log "special" with info severity
-    SLOG(INFO) << "SLOG(INFO)\n";
-    /// Log with explicit "special" type
-    LOG(INFO) << AixLog::Type::special << "LOG(INFO) << AixLog::Type::special\n";
-    /// Log with explicit "special" type (now with a macro)
-    LOG(INFO) << SPECIAL << "LOG(INFO) << SPECIAL\n";
-    /// ... with explicit "special" type and explicit tag
-    LOG(INFO) << SPECIAL << TAG("guten tag") << "LOG(INFO) << SPECIAL << TAG(\"guten tag\")\n";
 
     /// Different log severities
     LOG(FATAL) << "LOG(FATAL)\nLOG(FATAL) Second line\n";
