@@ -91,12 +91,4 @@ int main(int /*argc*/, char** /*argv*/)
 
     AixLog::Severity severity(AixLog::Severity::debug);
     LOG(severity) << "LOG(severity) << severity\n";
-
-    LOG(INFO, "TAG_A") << "LOG(INFO, TAG_A)\n";
-    LOG(DEBUG, "TAG_A") << "LOG(DEBUG, TAG_B)\n";
-    LOG(TRACE, "TAG_A") << "LOG(TRACE)\n";
-
-    LOG(INFO, "TAG_A") << "LOG(INFO, TAG_A)\n";
-    LOG(DEBUG, "TAG_A") << "LOG(DEBUG, TAG_B)\n";
-    LOG(TRACE, "TAG_A") << "LOG(TRACE)\n";
 }
