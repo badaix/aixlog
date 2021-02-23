@@ -36,6 +36,7 @@ build
 
 #test binary
 aixlog_example
+all.log
 
 #vscode
 .vscode
