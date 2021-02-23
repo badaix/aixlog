@@ -178,7 +178,7 @@ enum class Severity : std::int8_t
 
 static Severity to_severity(std::string severity, Severity def = Severity::info)
 {
-    std::transform(severity.begin(), severity.end(), severity.begin(), [](unsigned char c) { return std::tolower(c); });
+    std::transform(severity.begin(), severity.end(), severity.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (severity == "trace")
         return Severity::trace;
     else if (severity == "debug")
@@ -277,17 +277,14 @@ struct Conditional
     {
     }
 
-    void set(bool value)
-    {
-        is_true_ = value;
-    }
+    virtual ~Conditional() = default;
 
-    bool is_true() const
+    virtual bool is_true() const
     {
         return is_true_;
     }
 
-private:
+protected:
     bool is_true_;
 };
 
@@ -601,7 +598,7 @@ public:
     }
 
 protected:
-    Log() noexcept : last_buffer_(nullptr)
+    Log() noexcept : last_buffer_(nullptr), do_log_(true)
     {
         std::clog.rdbuf(this);
         std::clog << Severity() << Tag() << Function() << Conditional() << AixLog::Color::NONE << std::flush;
@@ -617,7 +614,7 @@ protected:
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         if (!get_stream().str().empty())
         {
-            if (conditional_.is_true())
+            if (do_log_)
             {
                 for (const auto& sink : log_sinks_)
                 {
@@ -639,7 +636,7 @@ protected:
         {
             if (c == '\n')
                 sync();
-            else
+            else if (do_log_)
                 get_stream() << static_cast<char>(c);
         }
         else
@@ -667,11 +664,14 @@ private:
         return *last_buffer_;
     }
 
+    /// one buffer per thread to avoid mixed log lines
     std::map<std::thread::id, std::stringstream> buffer_;
+    /// the last thread id
     std::thread::id last_id_;
+    /// the last buffer
     std::stringstream* last_buffer_ = nullptr;
     Metadata metadata_;
-    Conditional conditional_;
+    bool do_log_;
     std::vector<log_sink_ptr> log_sinks_;
     std::recursive_mutex mutex_;
 };
@@ -841,7 +841,7 @@ struct SinkOutputDebugString : public Sink
     {
     }
 
-    void log(const Metadata& metadata, const std::string& message) override
+    void log(const Metadata& /*metadata*/, const std::string& message) override
     {
         std::wstring wide = std::wstring(message.begin(), message.end());
         OutputDebugString(wide.c_str());
@@ -1131,7 +1131,7 @@ static std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
             log->metadata_.timestamp = nullptr;
             log->metadata_.tag = nullptr;
             log->metadata_.function = nullptr;
-            log->conditional_.set(true);
+            log->do_log_ = true;
         }
     }
     else
@@ -1192,7 +1192,7 @@ static std::ostream& operator<<(std::ostream& os, const Conditional& conditional
     if (log != nullptr)
     {
         std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->conditional_.set(conditional.is_true());
+        log->do_log_ = conditional.is_true();
     }
     return os;
 }
