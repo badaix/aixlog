@@ -841,10 +841,14 @@ struct SinkOutputDebugString : public Sink
     {
     }
 
-    void log(const Metadata& /*metadata*/, const std::string& message) override
+    void log(const Metadata& metadata, const std::string& message) override
     {
+#ifdef UNICODE
         std::wstring wide = std::wstring(message.begin(), message.end());
         OutputDebugString(wide.c_str());
+#else
+        OutputDebugString(message.c_str());
+#endif
     }
 };
 #endif
@@ -1004,8 +1008,12 @@ struct SinkEventLog : public Sink
 {
     SinkEventLog(const std::string& ident, const Filter& filter) : Sink(filter)
     {
+#ifdef UNICODE
         std::wstring wide = std::wstring(ident.begin(), ident.end()); // stijnvdb: RegisterEventSource expands to RegisterEventSourceW which takes wchar_t
         event_log = RegisterEventSource(NULL, wide.c_str());
+#else
+        event_log = RegisterEventSource(NULL, ident.c_str());
+#endif
     }
 
     WORD get_type(Severity severity) const
@@ -1031,11 +1039,15 @@ struct SinkEventLog : public Sink
 
     void log(const Metadata& metadata, const std::string& message) override
     {
+#ifdef UNICODE
         std::wstring wide = std::wstring(message.begin(), message.end());
         // We need this temp variable because we cannot take address of rValue
-        const wchar_t* c_str = wide.c_str();
-
+        const auto* c_str = wide.c_str();
         ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &c_str, NULL);
+#else
+        const auto* c_str = message.c_str();
+        ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &c_str, NULL);
+#endif
     }
 
 protected:

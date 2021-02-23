@@ -60,7 +60,7 @@ int main(int /*argc*/, char** /*argv*/)
     AixLog::Filter filter_syslog;
     // log lines with tag "SYSLOG" to syslog
     filter_syslog.add_filter("SYSLOG:TRACE");
-    auto sink_syslog = make_shared<AixLog::SinkSyslog>("aixlog example", filter_syslog);
+    auto sink_syslog = make_shared<AixLog::SinkNative>("aixlog example", filter_syslog);
 
     AixLog::Log::init({sink_cout, sink_syslog});
 
@@ -85,6 +85,10 @@ int main(int /*argc*/, char** /*argv*/)
                                cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line
                                     << "\n\tfile:  " << metadata.function.file << "\n";
                        })});
+
+#ifdef WIN32
+    AixLog::Log::instance().add_logsink<AixLog::SinkOutputDebugString>(AixLog::Severity::trace);
+#endif
 
     /// Log with info severity
     LOG(INFO) << "LOG(INFO)\n";
@@ -114,7 +118,9 @@ int main(int /*argc*/, char** /*argv*/)
     LOG(FATAL) << "LOG(FATAL) " << COLOR(red) << "red" << COLOR(none) << ", default color (using macros)\n";
     LOG(FATAL) << "LOG(FATAL) " << AixLog::TextColor(AixLog::Color::yellow, AixLog::Color::blue) << "yellow on blue background" << AixLog::Color::none
                << ", default color\n";
+#ifndef WIN32
     LOG(FATAL) << "LOG(FATAL) " << COLOR(yellow, blue) << "yellow on blue background" << COLOR(none) << ", default color (using macros)\n";
+#endif
 
     AixLog::Severity severity(AixLog::Severity::debug);
     LOG(severity) << "LOG(severity) << severity\n";
