@@ -17,6 +17,33 @@
 using namespace std;
 
 
+/// Log Conditional to log only every x-th message
+struct EveryXConditional : public AixLog::Conditional
+{
+    /// c'tor
+    /// @param every_x log only every_x-th line
+    EveryXConditional(size_t every_x) : every_x_(every_x), x_th_(0)
+    {
+    }
+
+    /// check if this is the x-th log message
+    /// @return true if this is the x-th log message
+    bool is_true() const override
+    {
+        if (++x_th_ == every_x_)
+        {
+            x_th_ = 0;
+            return true;
+        }
+        return false;
+    }
+
+private:
+    size_t every_x_;
+    mutable size_t x_th_;
+};
+
+
 int main(int /*argc*/, char** /*argv*/)
 {
     AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace);
@@ -31,8 +58,8 @@ int main(int /*argc*/, char** /*argv*/)
     filter.add_filter("LOG_TAG:DEBUG");
     auto sink_cout = make_shared<AixLog::SinkCout>(filter);
     AixLog::Filter filter_syslog;
-	// log lines with tag "SYSLOG" to syslog
-	filter_syslog.add_filter("SYSLOG:TRACE");
+    // log lines with tag "SYSLOG" to syslog
+    filter_syslog.add_filter("SYSLOG:TRACE");
     auto sink_syslog = make_shared<AixLog::SinkSyslog>("aixlog example", filter_syslog);
 
     AixLog::Log::init({sink_cout, sink_syslog});
@@ -91,4 +118,12 @@ int main(int /*argc*/, char** /*argv*/)
 
     AixLog::Severity severity(AixLog::Severity::debug);
     LOG(severity) << "LOG(severity) << severity\n";
+
+    EveryXConditional every_x(3);
+    LOG(INFO) << every_x << "1st will not be logged\n";
+    LOG(INFO) << every_x << "2nd will not be logged\n";
+    LOG(INFO) << every_x << "3rd will be logged\n";
+    LOG(INFO) << every_x << "4th will not be logged\n";
+    LOG(INFO) << every_x << "5th will not be logged\n";
+    LOG(INFO) << every_x << "6th will be logged\n";
 }
