@@ -7,7 +7,7 @@
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
-    Copyright (C) 2017-2020 Johannes Pohl
+    Copyright (C) 2017-2021 Johannes Pohl
 
     This software may be modified and distributed under the terms
     of the MIT license.  See the LICENSE file for details.
