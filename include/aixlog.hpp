@@ -269,11 +269,17 @@ struct TextColor
  */
 struct Conditional
 {
-    Conditional() : Conditional(true)
+    using EvalFunc = std::function<bool()>;
+
+    Conditional() : func_([](void) { return true; })
     {
     }
 
-    Conditional(bool value) : is_true_(value)
+    Conditional(const EvalFunc& func) : func_(func)
+    {
+    }
+
+    Conditional(bool value) : func_([value](void) { return value; })
     {
     }
 
@@ -281,11 +287,11 @@ struct Conditional
 
     virtual bool is_true() const
     {
-        return is_true_;
+        return func_();
     }
 
 protected:
-    bool is_true_;
+    EvalFunc func_;
 };
 
 /**

@@ -132,4 +132,16 @@ int main(int /*argc*/, char** /*argv*/)
     LOG(INFO) << every_x << "4th will not be logged\n";
     LOG(INFO) << every_x << "5th will not be logged\n";
     LOG(INFO) << every_x << "6th will be logged\n";
+
+    AixLog::Conditional not_every_3(AixLog::Conditional::EvalFunc([] {
+        static size_t n(0);
+        return (++n % 3 != 0);
+    }));
+
+    LOG(INFO) << not_every_3 << "1st will be logged\n";
+    LOG(INFO) << not_every_3 << "2nd will be logged\n";
+    LOG(INFO) << not_every_3 << "3rd will not be logged\n";
+    LOG(INFO) << not_every_3 << "4th will be logged\n";
+    LOG(INFO) << not_every_3 << "5th will be logged\n";
+    LOG(INFO) << not_every_3 << "6th will not be logged\n";
 }
