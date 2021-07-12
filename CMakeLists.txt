@@ -39,7 +39,27 @@ if (BUILD_EXAMPLE)
 endif (BUILD_EXAMPLE)
 
 
-install(FILES include/aixlog.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+
+# create interface library
+add_library(aixlog INTERFACE)
+target_include_directories(aixlog INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/>
+        $<INSTALL_INTERFACE:include>)
+
+
+SET(INSTALL_AIXLOG ON CACHE BOOL "Enable install target for aixlog")
+if (INSTALL_AIXLOG)
+    install(FILES include/aixlog.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+
+    # Make an export target
+    install(TARGETS aixlog EXPORT aixlogConfig)
+
+    # Install the export target as a file
+    install(EXPORT aixlogConfig DESTINATION "cmake")
+
+endif()
+
+
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
 IF(CLANG_FORMAT)
