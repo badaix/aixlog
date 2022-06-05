@@ -8,9 +8,21 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: dependencies
+      run: |
+        wget https://github.com/fmtlib/fmt/releases/download/8.1.1/fmt-8.1.1.zip
+        unzip fmt-8.1.1.zip
+        cd fmt-8.1.1
+        mkdir build
+        cd build
+        cmake ..
+        make fmt -j 10
+        sudo make install
     - name: cmake build
       run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
     - name: cmake make
       run: cmake --build build --parallel 3
     - name: test
       run: ./build/aixlog_example
+    - name: test fmt
+      run: ./build/aixlog_fmt_example
