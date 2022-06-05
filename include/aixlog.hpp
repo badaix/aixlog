@@ -16,6 +16,8 @@
 /// inspired by "eater":
 /// https://stackoverflow.com/questions/2638654/redirect-c-stdclog-to-syslog-on-unix
 
+/// TODO: support libfmt? https://fmt.dev/latest/api.html#argument-lists
+
 #ifndef AIX_LOG_HPP
 #define AIX_LOG_HPP
 
@@ -45,6 +47,10 @@
 #include <sstream>
 #include <thread>
 #include <vector>
+
+#ifdef USE_FMT
+#include <fmt/os.h>
+#endif
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -81,6 +87,7 @@
 #define AIXLOG_INTERNAL__FUNC __func__
 #endif
 
+#ifndef USE_FMT
 /// Internal helper macros (exposed, but shouldn't be used directly)
 #define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG()
 #define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG(TAG_)
@@ -97,17 +104,28 @@
 // usage: LOG(SEVERITY) or LOG(SEVERITY, TAG)
 // e.g.: LOG(NOTICE) or LOG(NOTICE, "my tag")
 #ifndef WIN32
-#define LOG(...) AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << FUNC
+#define LOG(...)                                                                                                                                               \
+    AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)                                                                                                            \
+    (__VA_ARGS__) << AixLog::Timestamp(std::chrono::system_clock::now()) << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
+#endif
 #endif
 
 // usage: COLOR(TEXT_COLOR, BACKGROUND_COLOR) or COLOR(TEXT_COLOR)
 // e.g.: COLOR(yellow, blue) or COLOR(red)
 #define COLOR(...) AIXLOG_INTERNAL__COLOR_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define FUNC AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
+
+#ifdef USE_FMT
+
+#define LOG(SEVERITY, TAG, format, ...)                                                                                                                        \
+    AixLog::Log::instance().log(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),    \
+                                                 AixLog::Timestamp(std::chrono::system_clock::now())),                                                         \
+                                FMT_STRING(format), ##__VA_ARGS__)
+
+#else
+
 #define TAG AixLog::Tag
 #define COND AixLog::Conditional
-#define TIMESTAMP AixLog::Timestamp(std::chrono::system_clock::now())
 
 
 // stijnvdb: sorry! :) LOG(SEV, "tag") was not working for Windows and I couldn't figure out how to fix it for windows without potentially breaking everything
@@ -122,8 +140,10 @@
 #define FUNC_RECOMPOSER(argsWithParentheses) FUNC_CHOOSER argsWithParentheses
 #define CHOOSE_FROM_ARG_COUNT(...) FUNC_RECOMPOSER((__VA_ARGS__, LOG_2, LOG_1, FUNC_, ...))
 #define MACRO_CHOOSER(...) CHOOSE_FROM_ARG_COUNT(__VA_ARGS__())
-#define LOG(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << FUNC
+#define LOG(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
 #endif
+#endif
+
 
 /**
  * @brief
@@ -263,6 +283,7 @@ struct TextColor
     Color background;
 };
 
+#ifndef USE_FMT
 /**
  * @brief
  * For Conditional logging of a log line
@@ -293,6 +314,7 @@ struct Conditional
 protected:
     EvalFunc func_;
 };
+#endif
 
 /**
  * @brief
@@ -454,7 +476,13 @@ private:
  */
 struct Metadata
 {
-    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(nullptr)
+    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(nullptr), thread_id(std::this_thread::get_id())
+    {
+    }
+
+    Metadata(Severity severity, Tag tag, Function function, Timestamp timestamp)
+        : severity(std::move(severity)), tag(std::move(tag)), function(std::move(function)), timestamp(std::move(timestamp)),
+          thread_id(std::this_thread::get_id())
     {
     }
 
@@ -462,6 +490,7 @@ struct Metadata
     Tag tag;
     Function function;
     Timestamp timestamp;
+    std::thread::id thread_id;
 };
 
 
@@ -536,12 +565,14 @@ struct Sink
     Filter filter;
 };
 
+#ifndef USE_FMT
 /// ostream operators << for the meta data structs
 static std::ostream& operator<<(std::ostream& os, const Severity& log_severity);
 static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp);
 static std::ostream& operator<<(std::ostream& os, const Tag& tag);
 static std::ostream& operator<<(std::ostream& os, const Function& function);
 static std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
+#endif
 static std::ostream& operator<<(std::ostream& os, const Color& color);
 static std::ostream& operator<<(std::ostream& os, const TextColor& text_color);
 
@@ -603,6 +634,34 @@ public:
         log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
     }
 
+#ifdef USE_FMT
+    template <typename S, typename... Args>
+    void log(const Metadata& meta, const S& format, Args&&... args)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        std::string s;
+        for (const auto& sink : log_sinks_)
+        {
+            if (sink->filter.match(meta))
+            {
+                // only construct the string if really needed
+                if (s.empty())
+                {
+                    // s = fmt::format(format, std::forward<Args>(args)...);
+                    s = fmt::vformat(format, fmt::make_args_checked<Args...>(format, args...));
+                    // Empty log line => no need to log
+                    if (s.empty())
+                        break;
+                }
+                sink->log(meta, s);
+            }
+        }
+    }
+
+protected:
+    Log() = default;
+    virtual ~Log() = default;
+#else
 protected:
     Log() noexcept : last_buffer_(nullptr), do_log_(true)
     {
@@ -678,6 +737,9 @@ private:
     std::stringstream* last_buffer_ = nullptr;
     Metadata metadata_;
     bool do_log_;
+#endif
+
+private:
     std::vector<log_sink_ptr> log_sinks_;
     std::recursive_mutex mutex_;
 };
@@ -1130,6 +1192,7 @@ private:
     callback_fun callback_;
 };
 
+#ifndef USE_FMT
 /**
  * @brief
  * ostream << operator for "Severity"
@@ -1215,6 +1278,8 @@ static std::ostream& operator<<(std::ostream& os, const Conditional& conditional
     return os;
 }
 
+#endif
+
 static std::ostream& operator<<(std::ostream& os, const TextColor& text_color)
 {
     os << "\033[";
@@ -1239,6 +1304,7 @@ static std::ostream& operator<<(std::ostream& os, const Color& color)
     os << TextColor(color);
     return os;
 }
+
 
 } // namespace AixLog
 

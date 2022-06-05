@@ -4,7 +4,7 @@
 # \_/\_/(__)(_/\_)\____/ \__/  \___/
 
 # This file is part of aixlog
-# Copyright (C) 2017-2021 Johannes Pohl
+# Copyright (C) 2017-2022 Johannes Pohl
 
 # This software may be modified and distributed under the terms
 # of the MIT license.  See the LICENSE file for details.
@@ -17,7 +17,7 @@ set(PROJECT_URL "https://github.com/badaix/aixlog")
 
 option(BUILD_EXAMPLE "Build example (build aixlog_example demo)" ON)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
@@ -32,7 +32,16 @@ include_directories(
 )
 
 if (BUILD_EXAMPLE)
-	add_executable(aixlog_example aixlog_example.cpp)
+    find_package(fmt)
+    add_executable(aixlog_fmt_example aixlog_fmt_example.cpp)
+    target_compile_definitions(aixlog_fmt_example PUBLIC USE_FMT)
+    target_link_libraries(aixlog_fmt_example fmt::fmt)
+	if (${CMAKE_SYSTEM_NAME} MATCHES "Android")
+		target_link_libraries(aixlog_fmt_example log atomic)
+	endif()
+
+    add_executable(aixlog_example aixlog_example.cpp)
+    target_link_libraries(aixlog_example fmt::fmt)
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Android")
 		target_link_libraries(aixlog_example log atomic)
 	endif()
