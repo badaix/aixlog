@@ -140,7 +140,7 @@
 #define FUNC_RECOMPOSER(argsWithParentheses) FUNC_CHOOSER argsWithParentheses
 #define CHOOSE_FROM_ARG_COUNT(...) FUNC_RECOMPOSER((__VA_ARGS__, LOG_2, LOG_1, FUNC_, ...))
 #define MACRO_CHOOSER(...) CHOOSE_FROM_ARG_COUNT(__VA_ARGS__())
-#define LOG(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
+#define LOG(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << AixLog::Timestamp(std::chrono::system_clock::now()) << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
 #endif
 #endif
 
