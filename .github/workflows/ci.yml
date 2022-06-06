@@ -1,9 +1,9 @@
-name: Ubuntu-amd64
+name: CI
 
 on: [push, pull_request]
 
 jobs:
-  build:
+  linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,3 +26,21 @@ jobs:
       run: ./build/aixlog_example
     - name: test fmt
       run: ./build/aixlog_fmt_example
+
+
+  windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: dependencies
+      run: |
+        vcpkg.exe install fmt --triplet x64-windows
+    - name: cmake build
+      run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET="x64-windows" -DCMAKE_BUILD_TYPE=Release
+    - name: cmake make
+      run: cmake --build build --parallel 3
+    - name: test
+      run: build\Debug\aixlog_example.exe
+    - name: test fmt
+      run: build\Debug\aixlog_fmt_example.exe
