@@ -44,3 +44,20 @@ jobs:
       run: build\Debug\aixlog_example.exe
     - name: test fmt
       run: build\Debug\aixlog_fmt_example.exe
+
+
+  macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: dependencies
+      run: brew install fmt
+    - name: cmake build
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    - name: cmake make
+      run: cmake --build build --parallel 3
+    - name: test
+      run: ./build/aixlog_example
+    - name: test fmt
+      run: ./build/aixlog_fmt_example
