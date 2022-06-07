@@ -12,11 +12,12 @@ jobs:
       fail-fast: false
       matrix:
         compiler: 
-          - clang-10
-          - clang-11
           - clang-12
+          - clang-13
+          - clang-14
           - gcc-9
           - gcc-10
+          - gcc-11
         include:
           - compiler: clang-12
             cc: clang-12
@@ -51,14 +52,17 @@ jobs:
         cmake .. -DFMT_TEST=OFF
         make -j 10
         sudo make install
-    - name: cmake
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-    - name: build
-      run: |
-        cmake --build build --parallel 3
       env:
         CC: ${{ matrix.cc }}
         CXX: ${{ matrix.cxx }}
+    - name: cmake
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
+    - name: build
+      run: cmake --build build --parallel 3
     - name: test
       run: ./build/aixlog_example
     - name: test fmt
@@ -87,7 +91,7 @@ jobs:
       run: |
         vcpkg.exe install fmt --triplet x64-windows
     - name: cmake
-      run: cmake -S . -B build -G "${{ matrix.vs }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET="x64-windows" -DCMAKE_BUILD_TYPE=Release
+      run: cmake -S . -B build -G "${{ matrix.vs }}" -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET="x64-windows" -DCMAKE_BUILD_TYPE=Release
     - name: build
       run: cmake --build build --parallel 3
     - name: test

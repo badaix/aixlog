@@ -42,7 +42,7 @@
 #include <functional>
 #include <iostream>
 #include <map>
-// #include <memory>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <thread>
