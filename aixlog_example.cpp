@@ -67,7 +67,7 @@ int main(int /*argc*/, char** /*argv*/)
 
     LOG(TRACE, "LOG_TAG") << "Logger with one cout log sink (filtered out)\n";
     LOG(TRACE, "OTHER TAG") << "Logger with one cout log sink (not filtered out)\n";
-    LOG(DEBUG, "SYSLOG") << "Ths will go also to syslog\n";
+    LOG(DEBUG, "SYSLOG") << "This will go also to syslog\n";
 
     AixLog::Log::init({/// Log everything into file "all.log"
                        make_shared<AixLog::SinkFile>(AixLog::Severity::trace, "all.log"),

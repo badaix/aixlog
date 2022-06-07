@@ -34,15 +34,15 @@
 #endif
 
 #include <algorithm>
-#include <cctype>
+// #include <cctype>
 #include <chrono>
-#include <cstdio>
-#include <ctime>
+// #include <cstdio>
+// #include <ctime>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
-#include <memory>
+// #include <memory>
 #include <mutex>
 #include <sstream>
 #include <thread>
@@ -117,10 +117,15 @@
 
 #ifdef USE_FMT
 
-#define LOG(SEVERITY, TAG, format, ...)                                                                                                                        \
+#define LOG(SEVERITY, TAG, FORMAT, ...)                                                                                                                        \
     AixLog::Log::instance().log(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),    \
                                                  AixLog::Timestamp(std::chrono::system_clock::now())),                                                         \
-                                FMT_STRING(format), ##__VA_ARGS__)
+                                FMT_STRING(FORMAT), ##__VA_ARGS__)
+
+#define CLOG(SEVERITY, TAG, CONDITION, FORMAT, ...)                                                                                                            \
+    AixLog::Log::instance().clog(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),   \
+                                                  AixLog::Timestamp(std::chrono::system_clock::now())),                                                        \
+                                 CONDITION, FMT_STRING(FORMAT), ##__VA_ARGS__)
 
 #else
 
@@ -140,7 +145,9 @@
 #define FUNC_RECOMPOSER(argsWithParentheses) FUNC_CHOOSER argsWithParentheses
 #define CHOOSE_FROM_ARG_COUNT(...) FUNC_RECOMPOSER((__VA_ARGS__, LOG_2, LOG_1, FUNC_, ...))
 #define MACRO_CHOOSER(...) CHOOSE_FROM_ARG_COUNT(__VA_ARGS__())
-#define LOG(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << AixLog::Timestamp(std::chrono::system_clock::now()) << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
+#define LOG(...)                                                                                                                                               \
+    MACRO_CHOOSER(__VA_ARGS__)                                                                                                                                 \
+    (__VA_ARGS__) << AixLog::Timestamp(std::chrono::system_clock::now()) << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
 #endif
 #endif
 
@@ -283,7 +290,7 @@ struct TextColor
     Color background;
 };
 
-#ifndef USE_FMT
+// #ifndef USE_FMT
 /**
  * @brief
  * For Conditional logging of a log line
@@ -314,7 +321,7 @@ struct Conditional
 protected:
     EvalFunc func_;
 };
-#endif
+// #endif
 
 /**
  * @brief
@@ -586,7 +593,10 @@ using log_sink_ptr = std::shared_ptr<Sink>;
  * The Log class will simply redirect clog to itself (as a streambuf) and
  * forward whatever went to clog to the log sink instances
  */
-class Log : public std::basic_streambuf<char, std::char_traits<char>>
+class Log
+#ifndef USE_FMT
+    : public std::basic_streambuf<char, std::char_traits<char>>
+#endif
 {
 public:
     static Log& instance()
@@ -635,6 +645,13 @@ public:
     }
 
 #ifdef USE_FMT
+    template <typename S, typename... Args>
+    void clog(const Metadata& meta, const AixLog::Conditional& condition, const S& format, Args&&... args)
+    {
+        if (condition.is_true())
+            log(meta, format, std::forward<Args>(args)...);
+    }
+
     template <typename S, typename... Args>
     void log(const Metadata& meta, const S& format, Args&&... args)
     {
