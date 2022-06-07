@@ -2,26 +2,63 @@ name: CI
 
 on: [push, pull_request]
 
+env:
+  FMT_VERSION: 8.1.1
+
 jobs:
   linux:
-    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: 
+          - clang-10
+          - clang-11
+          - clang-12
+          - gcc-9
+          - gcc-10
+        include:
+          - compiler: clang-12
+            cc: clang-12
+            cxx: clang++-12
+          - compiler: clang-13
+            cc: clang-13
+            cxx: clang++-13
+          - compiler: clang-14
+            cc: clang-14
+            cxx: clang++-14
+          - compiler: gcc-9
+            cc: gcc-9
+            cxx: g++-9
+          - compiler: gcc-10
+            cc: gcc-10
+            cxx: g++-10
+          - compiler: gcc-11
+            cc: gcc-11
+            cxx: g++-11
+
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v2
     - name: dependencies
       run: |
-        wget https://github.com/fmtlib/fmt/releases/download/8.1.1/fmt-8.1.1.zip
-        unzip fmt-8.1.1.zip
-        cd fmt-8.1.1
+        wget https://github.com/fmtlib/fmt/releases/download/${FMT_VERSION}/fmt-${FMT_VERSION}.zip
+        unzip fmt-${FMT_VERSION}.zip
+        cd fmt-${FMT_VERSION}
         mkdir build
         cd build
-        cmake ..
-        make fmt -j 10
+        cmake .. -DFMT_TEST=OFF
+        make -j 10
         sudo make install
-    - name: cmake build
+    - name: cmake
       run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-    - name: cmake make
-      run: cmake --build build --parallel 3
+    - name: build
+      run: |
+        cmake --build build --parallel 3
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
     - name: test
       run: ./build/aixlog_example
     - name: test fmt
@@ -29,16 +66,29 @@ jobs:
 
 
   windows:
-    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: 
+          - windows-2019
+          - windows-2022
+        include:
+          - os: windows-2019
+            vs: "Visual Studio 16 2019"
+          - os: windows-2022
+            vs: "Visual Studio 17 2022"
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
     - name: dependencies
       run: |
         vcpkg.exe install fmt --triplet x64-windows
-    - name: cmake build
-      run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET="x64-windows" -DCMAKE_BUILD_TYPE=Release
-    - name: cmake make
+    - name: cmake
+      run: cmake -S . -B build -G "${{ matrix.vs }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET="x64-windows" -DCMAKE_BUILD_TYPE=Release
+    - name: build
       run: cmake --build build --parallel 3
     - name: test
       run: build\Debug\aixlog_example.exe
@@ -47,15 +97,24 @@ jobs:
 
 
   macos:
-    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode: ['11.7', '12.5.1', '13.2.1']
+
+    runs-on: macos-11
 
     steps:
     - uses: actions/checkout@v2
     - name: dependencies
       run: brew install fmt
-    - name: cmake build
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-    - name: cmake make
+    - name: cmake
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      env:
+        DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+    - name: build
       run: cmake --build build --parallel 3
     - name: test
       run: ./build/aixlog_example
