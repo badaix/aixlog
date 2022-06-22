@@ -39,12 +39,6 @@ if (BUILD_EXAMPLE)
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Android")
 		target_link_libraries(aixlog_fmt_example log atomic)
 	endif()
-
-    add_executable(aixlog_example aixlog_example.cpp)
-    target_link_libraries(aixlog_example fmt::fmt)
-	if (${CMAKE_SYSTEM_NAME} MATCHES "Android")
-		target_link_libraries(aixlog_example log atomic)
-	endif()
 endif (BUILD_EXAMPLE)
 
 
@@ -54,7 +48,7 @@ FIND_PROGRAM(CLANG_FORMAT "clang-format")
 IF(CLANG_FORMAT)
 	set(CHECK_CXX_SOURCE_FILES
 	${CMAKE_SOURCE_DIR}/include/aixlog.hpp
-	${CMAKE_SOURCE_DIR}/aixlog_example.cpp
+	${CMAKE_SOURCE_DIR}/aixlog_fmt_example.cpp
 	)
 
     ADD_CUSTOM_TARGET(

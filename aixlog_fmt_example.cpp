@@ -84,19 +84,16 @@ int main(int /*argc*/, char** /*argv*/)
                        make_shared<AixLog::SinkCerr>(AixLog::Severity::error, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)"),
                        /// Callback log sink with cout logging in a lambda function
                        /// Could also do file logging
-                       make_shared<AixLog::SinkCallback>(AixLog::Severity::trace,
-                                                         [](const AixLog::Metadata& metadata, const std::string& message)
-                                                         {
-                                                             cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text
-                                                                  << "\n\tsever: " << AixLog::to_string(metadata.severity) << " ("
-                                                                  << static_cast<int>(metadata.severity) << ")\n"
-                                                                  << "\ttid:   " << metadata.thread_id << "\n";                                                            
-                                                             if (metadata.timestamp)
-                                                                 cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
-                                                             if (metadata.function)
-                                                                 cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line
-                                                                      << "\n\tfile:  " << metadata.function.file << "\n";
-                                                         })});
+                       make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, [](const AixLog::Metadata& metadata, const std::string& message) {
+                           cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text
+                                << "\n\tsever: " << AixLog::to_string(metadata.severity) << " (" << static_cast<int>(metadata.severity) << ")\n"
+                                << "\ttid:   " << metadata.thread_id << "\n";
+                           if (metadata.timestamp)
+                               cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
+                           if (metadata.function)
+                               cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line
+                                    << "\n\tfile:  " << metadata.function.file << "\n";
+                       })});
 
 #ifdef WIN32
     AixLog::Log::instance().add_logsink<AixLog::SinkOutputDebugString>(AixLog::Severity::trace);

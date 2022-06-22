@@ -48,6 +48,8 @@
 #include <thread>
 #include <vector>
 
+#define USE_FMT 1
+
 #ifdef USE_FMT
 #include <fmt/os.h>
 #endif
@@ -87,36 +89,6 @@
 #define AIXLOG_INTERNAL__FUNC __func__
 #endif
 
-#ifndef USE_FMT
-/// Internal helper macros (exposed, but shouldn't be used directly)
-#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG()
-#define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG(TAG_)
-
-#define AIXLOG_INTERNAL__ONE_COLOR(FG_) AixLog::Color::FG_
-#define AIXLOG_INTERNAL__TWO_COLOR(FG_, BG_) AixLog::TextColor(AixLog::Color::FG_, AixLog::Color::BG_)
-
-// https://stackoverflow.com/questions/3046889/optional-parameters-with-c-macros
-#define AIXLOG_INTERNAL__VAR_PARM(PARAM1_, PARAM2_, FUNC_, ...) FUNC_
-#define AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(...) AIXLOG_INTERNAL__VAR_PARM(__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG, AIXLOG_INTERNAL__LOG_SEVERITY, )
-#define AIXLOG_INTERNAL__COLOR_MACRO_CHOOSER(...) AIXLOG_INTERNAL__VAR_PARM(__VA_ARGS__, AIXLOG_INTERNAL__TWO_COLOR, AIXLOG_INTERNAL__ONE_COLOR, )
-
-/// External logger macros
-// usage: LOG(SEVERITY) or LOG(SEVERITY, TAG)
-// e.g.: LOG(NOTICE) or LOG(NOTICE, "my tag")
-#ifndef WIN32
-#define LOG(...)                                                                                                                                               \
-    AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)                                                                                                            \
-    (__VA_ARGS__) << AixLog::Timestamp(std::chrono::system_clock::now()) << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
-#endif
-#endif
-
-// usage: COLOR(TEXT_COLOR, BACKGROUND_COLOR) or COLOR(TEXT_COLOR)
-// e.g.: COLOR(yellow, blue) or COLOR(red)
-#define COLOR(...) AIXLOG_INTERNAL__COLOR_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
-
-
-#ifdef USE_FMT
-
 #define LOG(SEVERITY, TAG, FORMAT, ...)                                                                                                                        \
     AixLog::Log::instance().log(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),    \
                                                  AixLog::Timestamp(std::chrono::system_clock::now())),                                                         \
@@ -127,29 +99,6 @@
                                                   AixLog::Timestamp(std::chrono::system_clock::now())),                                                        \
                                  CONDITION, FMT_STRING(FORMAT), ##__VA_ARGS__)
 
-#else
-
-#define TAG AixLog::Tag
-#define COND AixLog::Conditional
-
-
-// stijnvdb: sorry! :) LOG(SEV, "tag") was not working for Windows and I couldn't figure out how to fix it for windows without potentially breaking everything
-// else...
-// https://stackoverflow.com/questions/3046889/optional-parameters-with-c-macros (Jason Deng)
-#ifdef WIN32
-#define LOG_2(severity, tag) AIXLOG_INTERNAL__LOG_SEVERITY_TAG(severity, tag)
-#define LOG_1(severity) AIXLOG_INTERNAL__LOG_SEVERITY(severity)
-#define LOG_0() LOG_1(0)
-
-#define FUNC_CHOOSER(_f1, _f2, _f3, ...) _f3
-#define FUNC_RECOMPOSER(argsWithParentheses) FUNC_CHOOSER argsWithParentheses
-#define CHOOSE_FROM_ARG_COUNT(...) FUNC_RECOMPOSER((__VA_ARGS__, LOG_2, LOG_1, FUNC_, ...))
-#define MACRO_CHOOSER(...) CHOOSE_FROM_ARG_COUNT(__VA_ARGS__())
-#define LOG(...)                                                                                                                                               \
-    MACRO_CHOOSER(__VA_ARGS__)                                                                                                                                 \
-    (__VA_ARGS__) << AixLog::Timestamp(std::chrono::system_clock::now()) << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
-#endif
-#endif
 
 
 /**
@@ -250,47 +199,7 @@ static std::string to_string(Severity logSeverity)
     }
 }
 
-/**
- * @brief
- * Color constants used for console colors
- */
-enum class Color
-{
-    none = 0,
-    NONE = 0,
-    black = 1,
-    BLACK = 1,
-    red = 2,
-    RED = 2,
-    green = 3,
-    GREEN = 3,
-    yellow = 4,
-    YELLOW = 4,
-    blue = 5,
-    BLUE = 5,
-    magenta = 6,
-    MAGENTA = 6,
-    cyan = 7,
-    CYAN = 7,
-    white = 8,
-    WHITE = 8
-};
 
-/**
- * @brief
- * Encapsulation of foreground and background color
- */
-struct TextColor
-{
-    TextColor(Color foreground = Color::none, Color background = Color::none) : foreground(foreground), background(background)
-    {
-    }
-
-    Color foreground;
-    Color background;
-};
-
-// #ifndef USE_FMT
 /**
  * @brief
  * For Conditional logging of a log line
@@ -580,8 +489,6 @@ static std::ostream& operator<<(std::ostream& os, const Tag& tag);
 static std::ostream& operator<<(std::ostream& os, const Function& function);
 static std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
 #endif
-static std::ostream& operator<<(std::ostream& os, const Color& color);
-static std::ostream& operator<<(std::ostream& os, const TextColor& text_color);
 
 using log_sink_ptr = std::shared_ptr<Sink>;
 
@@ -644,7 +551,6 @@ public:
         log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
     }
 
-#ifdef USE_FMT
     template <typename S, typename... Args>
     void clog(const Metadata& meta, const AixLog::Conditional& condition, const S& format, Args&&... args)
     {
@@ -678,88 +584,12 @@ public:
 protected:
     Log() = default;
     virtual ~Log() = default;
-#else
-protected:
-    Log() noexcept : last_buffer_(nullptr), do_log_(true)
-    {
-        std::clog.rdbuf(this);
-        std::clog << Severity() << Tag() << Function() << Conditional() << AixLog::Color::NONE << std::flush;
-    }
-
-    virtual ~Log()
-    {
-        sync();
-    }
-
-    int sync() override
-    {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
-        if (!get_stream().str().empty())
-        {
-            if (do_log_)
-            {
-                for (const auto& sink : log_sinks_)
-                {
-                    if (sink->filter.match(metadata_))
-                        sink->log(metadata_, get_stream().str());
-                }
-            }
-            get_stream().str("");
-            get_stream().clear();
-        }
-
-        return 0;
-    }
-
-    int overflow(int c) override
-    {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
-        if (c != EOF)
-        {
-            if (c == '\n')
-                sync();
-            else if (do_log_)
-                get_stream() << static_cast<char>(c);
-        }
-        else
-        {
-            sync();
-        }
-        return c;
-    }
-
-private:
-    friend std::ostream& operator<<(std::ostream& os, const Severity& log_severity);
-    friend std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp);
-    friend std::ostream& operator<<(std::ostream& os, const Tag& tag);
-    friend std::ostream& operator<<(std::ostream& os, const Function& function);
-    friend std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
-
-    std::stringstream& get_stream()
-    {
-        auto id = std::this_thread::get_id();
-        if ((last_buffer_ == nullptr) || (last_id_ != id))
-        {
-            last_id_ = id;
-            last_buffer_ = &(buffer_[id]);
-        }
-        return *last_buffer_;
-    }
-
-    /// one buffer per thread to avoid mixed log lines
-    std::map<std::thread::id, std::stringstream> buffer_;
-    /// the last thread id
-    std::thread::id last_id_;
-    /// the last buffer
-    std::stringstream* last_buffer_ = nullptr;
-    Metadata metadata_;
-    bool do_log_;
-#endif
 
 private:
     std::vector<log_sink_ptr> log_sinks_;
     std::recursive_mutex mutex_;
 };
+
 
 /**
  * @brief
@@ -816,14 +646,6 @@ protected:
         size_t pos = result.find("#severity");
         if (pos != std::string::npos)
             result.replace(pos, 9, to_string(metadata.severity));
-
-        pos = result.find("#color_severity");
-        if (pos != std::string::npos)
-        {
-            std::stringstream ss;
-            ss << TextColor(Color::RED) << to_string(metadata.severity) << TextColor(Color::NONE);
-            result.replace(pos, 15, ss.str());
-        }
 
         pos = result.find("#tag_func");
         if (pos != std::string::npos)
@@ -1296,31 +1118,6 @@ static std::ostream& operator<<(std::ostream& os, const Conditional& conditional
 }
 
 #endif
-
-static std::ostream& operator<<(std::ostream& os, const TextColor& text_color)
-{
-    os << "\033[";
-    if ((text_color.foreground == Color::none) && (text_color.background == Color::none))
-        os << "0"; // reset colors if no params
-
-    if (text_color.foreground != Color::none)
-    {
-        os << 29 + static_cast<int>(text_color.foreground);
-        if (text_color.background != Color::none)
-            os << ";";
-    }
-    if (text_color.background != Color::none)
-        os << 39 + static_cast<int>(text_color.background);
-    os << "m";
-
-    return os;
-}
-
-static std::ostream& operator<<(std::ostream& os, const Color& color)
-{
-    os << TextColor(color);
-    return os;
-}
 
 
 } // namespace AixLog
