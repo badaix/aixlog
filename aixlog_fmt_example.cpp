@@ -96,39 +96,41 @@ int main(int /*argc*/, char** /*argv*/)
                                })});
 
 #ifdef WIN32
-    AixLog::Log::instance().add_logsink<AixLog::SinkOutputDebugString>(AixLog::Severity::trace);
+    AixLog::Log::add_logsink<AixLog::SinkOutputDebugString>(AixLog::Severity::trace);
 #endif
     LOG(INFO, "guten tag", "LOG(INFO, \"guten tag\")");
 
-    LOG(WARNING, LOG_TAG, "LOG(WARNING)");
-    LOG(NOTICE, LOG_TAG, "LOG(NOTICE)");
-    LOG(INFO, LOG_TAG, "LOG(INFO)");
-    LOG(DEBUG, LOG_TAG, "LOG(DEBUG)");
-    LOG(TRACE, LOG_TAG, "LOG(TRACE)");
+    AixLog::Tag tag("LOG TAG");
+
+    LOG(WARNING, tag, "LOG(WARNING)");
+    LOG(NOTICE, tag, "LOG(NOTICE)");
+    LOG(INFO, tag, "LOG(INFO)");
+    LOG(DEBUG, tag, "LOG(DEBUG)");
+    LOG(TRACE, tag, "LOG(TRACE)");
 
     AixLog::Severity severity(AixLog::Severity::debug);
-    LOG(severity, LOG_TAG, "LOG(severity, LOG_TAG, severity");
+    LOG(severity, tag, "LOG(severity, LOG_TAG, severity");
 
     EveryXConditional every_x(3);
-    CLOG(INFO, LOG_TAG, every_x, "1st will not be logged");
-    CLOG(INFO, LOG_TAG, every_x, "2nd will not be logged");
-    CLOG(INFO, LOG_TAG, every_x, "3rd will be logged");
-    CLOG(INFO, LOG_TAG, every_x, "4th will not be logged");
-    CLOG(INFO, LOG_TAG, every_x, "5th will not be logged");
-    CLOG(INFO, LOG_TAG, every_x, "6th will be logged");
+    CLOG(INFO, tag, every_x, "1st will not be logged");
+    CLOG(INFO, tag, every_x, "2nd will not be logged");
+    CLOG(INFO, tag, every_x, "3rd will be logged");
+    CLOG(INFO, tag, every_x, "4th will not be logged");
+    CLOG(INFO, tag, every_x, "5th will not be logged");
+    CLOG(INFO, tag, every_x, "6th will be logged");
 
     AixLog::Conditional not_every_3(AixLog::Conditional::EvalFunc([] {
         static size_t n(0);
         return (++n % 3 != 0);
     }));
 
-    CLOG(INFO, LOG_TAG, not_every_3, "1st will be logged");
-    CLOG(INFO, LOG_TAG, not_every_3, "2nd will be logged");
-    CLOG(INFO, LOG_TAG, not_every_3, "3rd will not be logged");
-    CLOG(INFO, LOG_TAG, not_every_3, "4th will be logged");
-    CLOG(INFO, LOG_TAG, not_every_3, "5th will be logged");
-    CLOG(INFO, LOG_TAG, not_every_3, "6th will not be logged");
+    CLOG(INFO, tag, not_every_3, "1st will be logged");
+    CLOG(INFO, tag, not_every_3, "2nd will be logged");
+    CLOG(INFO, tag, not_every_3, "3rd will not be logged");
+    CLOG(INFO, tag, not_every_3, "4th will be logged");
+    CLOG(INFO, tag, not_every_3, "5th will be logged");
+    CLOG(INFO, tag, not_every_3, "6th will not be logged");
 
-    CLOG(INFO, LOG_TAG, false, "will not be logged");
-    CLOG(INFO, LOG_TAG, true, "will be logged");
+    CLOG(INFO, tag, false, "will not be logged");
+    CLOG(INFO, tag, true, "will be logged");
 }
