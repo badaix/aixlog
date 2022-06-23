@@ -90,14 +90,14 @@
 #endif
 
 #define LOG(SEVERITY, TAG, FORMAT, ...)                                                                                                                        \
-    AixLog::Log::instance().log(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),    \
-                                                 AixLog::Timestamp(std::chrono::system_clock::now())),                                                         \
-                                FMT_STRING(FORMAT), ##__VA_ARGS__)
+    AixLog::Log::log(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),               \
+                                      AixLog::Timestamp(std::chrono::system_clock::now())),                                                                    \
+                     FMT_STRING(FORMAT), ##__VA_ARGS__)
 
 #define CLOG(SEVERITY, TAG, CONDITION, FORMAT, ...)                                                                                                            \
-    AixLog::Log::instance().clog(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),   \
-                                                  AixLog::Timestamp(std::chrono::system_clock::now())),                                                        \
-                                 CONDITION, FMT_STRING(FORMAT), ##__VA_ARGS__)
+    AixLog::Log::clog(AixLog::Metadata(static_cast<AixLog::Severity>(SEVERITY), TAG, AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__),              \
+                                       AixLog::Timestamp(std::chrono::system_clock::now())),                                                                   \
+                      CONDITION, FMT_STRING(FORMAT), ##__VA_ARGS__)
 
 
 
@@ -392,7 +392,7 @@ private:
  */
 struct Metadata
 {
-    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(nullptr), thread_id(std::this_thread::get_id())
+    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(std::chrono::system_clock::now()), thread_id(std::this_thread::get_id())
     {
     }
 
@@ -501,76 +501,73 @@ using log_sink_ptr = std::shared_ptr<Sink>;
  * forward whatever went to clog to the log sink instances
  */
 class Log
-#ifndef USE_FMT
-    : public std::basic_streambuf<char, std::char_traits<char>>
-#endif
 {
 public:
-    static Log& instance()
-    {
-        static Log instance_;
-        return instance_;
-    }
-
-    /// Without "init" every LOG(X) will simply go to clog
-    static void init(const std::vector<log_sink_ptr> log_sinks = {})
-    {
-        Log::instance().log_sinks_.clear();
-
-        for (const auto& sink : log_sinks)
-            Log::instance().add_logsink(sink);
-    }
-
     template <typename T, typename... Ts>
-    static std::shared_ptr<T> init(Ts&&... params)
+    static std::shared_ptr<T> add_logsink(Ts&&... params)
     {
-        std::shared_ptr<T> sink = Log::instance().add_logsink<T>(std::forward<Ts>(params)...);
-        init({sink});
-        return sink;
-    }
-
-    template <typename T, typename... Ts>
-    std::shared_ptr<T> add_logsink(Ts&&... params)
-    {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
         static_assert(std::is_base_of<Sink, typename std::decay<T>::type>::value, "type T must be a Sink");
         std::shared_ptr<T> sink = std::make_shared<T>(std::forward<Ts>(params)...);
-        log_sinks_.push_back(sink);
+        sinks().push_back(sink);
         return sink;
     }
 
-    void add_logsink(const log_sink_ptr& sink)
+    static void add_logsink(const log_sink_ptr& sink)
     {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
-        log_sinks_.push_back(sink);
+        sinks().push_back(sink);
     }
 
-    void remove_logsink(const log_sink_ptr& sink)
+    static void add_logsinks(const std::vector<log_sink_ptr> log_sinks)
     {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
-        log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
+        Log::sinks().clear();
+
+        for (const auto& sink : log_sinks)
+            Log::add_logsink(sink);
+    }
+
+    template <typename T, typename... Ts>
+    static std::shared_ptr<T> set_logsink(Ts&&... params)
+    {
+        static_assert(std::is_base_of<Sink, typename std::decay<T>::type>::value, "type T must be a Sink");
+        Log::sinks().clear();
+        return Log::add_logsink<T>(std::forward<Ts>(params)...);
+    }
+
+    static void set_logsink(const log_sink_ptr& sink)
+    {
+        Log::sinks().clear();
+        Log::add_logsink(sink);
+    }
+
+    static void set_logsinks(const std::vector<log_sink_ptr> log_sinks)
+    {
+        Log::sinks().clear();
+        add_logsinks(log_sinks);
+    }
+
+    static void remove_logsink(const log_sink_ptr& sink)
+    {
+        sinks().erase(std::remove(sinks().begin(), sinks().end(), sink), sinks().end());
     }
 
     template <typename S, typename... Args>
-    void clog(const Metadata& meta, const AixLog::Conditional& condition, const S& format, Args&&... args)
+    static void clog(const Metadata& meta, const AixLog::Conditional& condition, const S& format, Args&&... args)
     {
         if (condition.is_true())
             log(meta, format, std::forward<Args>(args)...);
     }
 
     template <typename S, typename... Args>
-    void log(const Metadata& meta, const S& format, Args&&... args)
+    static void log(const Metadata& meta, const S& format, Args&&... args)
     {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
         std::string s;
-        for (const auto& sink : log_sinks_)
+        for (const auto& sink : sinks())
         {
             if (sink->filter.match(meta))
             {
                 // only construct the string if really needed
                 if (s.empty())
                 {
-                    // s = fmt::format(format, std::forward<Args>(args)...);
                     s = fmt::vformat(format, fmt::make_args_checked<Args...>(format, args...));
                     // Empty log line => no need to log
                     if (s.empty())
@@ -586,8 +583,11 @@ protected:
     virtual ~Log() = default;
 
 private:
-    std::vector<log_sink_ptr> log_sinks_;
-    std::recursive_mutex mutex_;
+    static std::vector<log_sink_ptr>& sinks()
+    {
+        static std::vector<log_sink_ptr> log_sinks_;
+        return log_sinks_;
+    }
 };
 
 
