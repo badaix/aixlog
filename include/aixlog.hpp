@@ -506,20 +506,23 @@ public:
     template <typename T, typename... Ts>
     static std::shared_ptr<T> add_logsink(Ts&&... params)
     {
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
         static_assert(std::is_base_of<Sink, typename std::decay<T>::type>::value, "type T must be a Sink");
         std::shared_ptr<T> sink = std::make_shared<T>(std::forward<Ts>(params)...);
-        sinks().push_back(sink);
+        state().sinks.push_back(sink);
         return sink;
     }
 
     static void add_logsink(const log_sink_ptr& sink)
     {
-        sinks().push_back(sink);
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
+        state().sinks.push_back(sink);
     }
 
     static void add_logsinks(const std::vector<log_sink_ptr> log_sinks)
     {
-        Log::sinks().clear();
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
+        state().sinks.clear();
 
         for (const auto& sink : log_sinks)
             Log::add_logsink(sink);
@@ -529,25 +532,29 @@ public:
     static std::shared_ptr<T> set_logsink(Ts&&... params)
     {
         static_assert(std::is_base_of<Sink, typename std::decay<T>::type>::value, "type T must be a Sink");
-        Log::sinks().clear();
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
+        state().sinks.clear();
         return Log::add_logsink<T>(std::forward<Ts>(params)...);
     }
 
     static void set_logsink(const log_sink_ptr& sink)
     {
-        Log::sinks().clear();
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
+        state().sinks.clear();
         Log::add_logsink(sink);
     }
 
     static void set_logsinks(const std::vector<log_sink_ptr> log_sinks)
     {
-        Log::sinks().clear();
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
+        state().sinks.clear();
         add_logsinks(log_sinks);
     }
 
     static void remove_logsink(const log_sink_ptr& sink)
     {
-        sinks().erase(std::remove(sinks().begin(), sinks().end(), sink), sinks().end());
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
+        state().sinks.erase(std::remove(state().sinks.begin(), state().sinks.end(), sink), state().sinks.end());
     }
 
     template <typename S, typename... Args>
@@ -561,7 +568,8 @@ public:
     static void log(const Metadata& meta, const S& format, Args&&... args)
     {
         std::string s;
-        for (const auto& sink : sinks())
+        std::lock_guard<std::recursive_mutex> lock(state().mutex);
+        for (const auto& sink : state().sinks)
         {
             if (sink->filter.match(meta))
             {
@@ -583,10 +591,16 @@ protected:
     virtual ~Log() = default;
 
 private:
-    static std::vector<log_sink_ptr>& sinks()
+    struct State
     {
-        static std::vector<log_sink_ptr> log_sinks_;
-        return log_sinks_;
+        std::vector<log_sink_ptr> sinks;
+        std::recursive_mutex mutex;
+    };
+
+    static State& state()
+    {
+        static State state;
+        return state;
     }
 };
 
