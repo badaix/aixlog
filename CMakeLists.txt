@@ -33,7 +33,7 @@ include_directories(
 
 if (BUILD_EXAMPLE)
     find_package(fmt)
-    add_executable(aixlog_fmt_example aixlog_fmt_example.cpp)
+    add_executable(aixlog_fmt_example examples/aixlog_fmt_example.cpp)
     target_compile_definitions(aixlog_fmt_example PUBLIC USE_FMT)
     target_link_libraries(aixlog_fmt_example fmt::fmt)
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Android")
@@ -46,10 +46,11 @@ install(FILES include/aixlog.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
 IF(CLANG_FORMAT)
-	set(CHECK_CXX_SOURCE_FILES
-	${CMAKE_SOURCE_DIR}/include/aixlog.hpp
-	${CMAKE_SOURCE_DIR}/aixlog_fmt_example.cpp
-	)
+    FILE(GLOB_RECURSE
+        CHECK_CXX_SOURCE_FILES
+        ${CMAKE_SOURCE_DIR}/include/*.hpp
+        ${CMAKE_SOURCE_DIR}/examples/*.cpp
+    )
 
     ADD_CUSTOM_TARGET(
         reformat

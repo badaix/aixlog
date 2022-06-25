@@ -12,7 +12,10 @@
 ***/
 
 
-#include "aixlog.hpp"
+#include <aixlog/aixlog.hpp>
+#include <aixlog/sinks/sink_cerr.hpp>
+#include <aixlog/sinks/sink_cout.hpp>
+#include <aixlog/sinks/sink_file.hpp>
 
 
 using namespace std;
@@ -20,7 +23,7 @@ using namespace std;
 static constexpr auto LOG_TAG = "LOG TAG";
 
 /// Log Conditional to log only every x-th message
-struct EveryXConditional : public AixLog::Conditional
+struct EveryXConditional : public aixlog::Conditional
 {
     /// c'tor
     /// @param every_x log only every_x-th line
@@ -48,45 +51,45 @@ private:
 
 int main(int /*argc*/, char** /*argv*/)
 {
-    AixLog::Log::set_logsink<AixLog::SinkCout>(AixLog::Severity::trace);
-    // AixLog::Log::instance().log("The answer is {}.", 42);
+    aixlog::Log::set_logsink<aixlog::sinks::SinkCout>(aixlog::Severity::trace);
+    // aixlog::Log::instance().log("The answer is {}.", 42);
     LOG(TRACE, LOG_TAG, "The answer is {}.", 42);
     LOG(TRACE, LOG_TAG, "Hello, {}!", "world");
     LOG(TRACE, LOG_TAG, "The answer is 42.");
 
-    AixLog::Log::set_logsink<AixLog::SinkCout>(AixLog::Severity::trace);
+    aixlog::Log::set_logsink<aixlog::sinks::SinkCout>(aixlog::Severity::trace);
     LOG(TRACE, LOG_TAG, "Logger with one cout log sink");
     LOG(DEBUG, LOG_TAG, "Logger with one cout log sink");
     LOG(INFO, LOG_TAG, "Logger with one cout log sink");
 
-    AixLog::Filter filter;
+    aixlog::Filter filter;
     // log all lines with "trace" severity
     filter.add_filter("*:TRACE");
     // log all lines with tag "LOG_TAG"	with debug or higher severity
     filter.add_filter("LOG_TAG:DEBUG");
-    auto sink_cout = make_shared<AixLog::SinkCout>(filter);
-    AixLog::Filter filter_syslog;
+    auto sink_cout = make_shared<aixlog::sinks::SinkCout>(filter);
+    aixlog::Filter filter_syslog;
     // log lines with tag "SYSLOG" to syslog
     filter_syslog.add_filter("SYSLOG:TRACE");
-    auto sink_syslog = make_shared<AixLog::SinkNative>("aixlog example", filter_syslog);
+    auto sink_syslog = make_shared<aixlog::SinkNative>("aixlog example", filter_syslog);
 
-    AixLog::Log::set_logsinks({sink_cout, sink_syslog});
+    aixlog::Log::set_logsinks({sink_cout, sink_syslog});
 
     LOG(TRACE, "LOG_TAG", "Logger with one cout log sink (filtered out)");
     LOG(TRACE, "OTHER TAG", "Logger with one cout log sink (not filtered out)");
     LOG(DEBUG, "SYSLOG", "This will go also to syslog");
 
-    AixLog::Log::set_logsinks({/// Log everything into file "all.log"
-                               make_shared<AixLog::SinkFile>(AixLog::Severity::trace, "all.log"),
+    aixlog::Log::set_logsinks({/// Log everything into file "all.log"
+                               make_shared<aixlog::sinks::SinkFile>(aixlog::Severity::trace, "all.log"),
                                /// Log everything to SinkCout
-                               make_shared<AixLog::SinkCout>(AixLog::Severity::trace, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func) #message"),
+                               make_shared<aixlog::sinks::SinkCout>(aixlog::Severity::trace, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func) #message"),
                                /// Log error and higher severity messages to cerr
-                               make_shared<AixLog::SinkCerr>(AixLog::Severity::error, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)"),
+                               make_shared<aixlog::sinks::SinkCerr>(aixlog::Severity::error, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)"),
                                /// Callback log sink with cout logging in a lambda function
                                /// Could also do file logging
-                               make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, [](const AixLog::Metadata& metadata, const std::string& message) {
-                                   cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text
-                                        << "\n\tsever: " << AixLog::to_string(metadata.severity) << " (" << static_cast<int>(metadata.severity) << ")\n"
+                               make_shared<aixlog::SinkCallback>(aixlog::Severity::trace, [](const aixlog::Metadata& metadata, const std::string& message) {
+                                   cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag << "\n\tsever: " << metadata.severity << " ("
+                                        << static_cast<int>(metadata.severity) << ")\n"
                                         << "\ttid:   " << metadata.thread_id << "\n";
                                    if (metadata.timestamp)
                                        cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
@@ -96,11 +99,11 @@ int main(int /*argc*/, char** /*argv*/)
                                })});
 
 #ifdef WIN32
-    AixLog::Log::add_logsink<AixLog::SinkOutputDebugString>(AixLog::Severity::trace);
+    aixlog::Log::add_logsink<aixlog::SinkOutputDebugString>(aixlog::Severity::trace);
 #endif
     LOG(INFO, "guten tag", "LOG(INFO, \"guten tag\")");
 
-    AixLog::Tag tag("LOG TAG");
+    aixlog::Tag tag("LOG TAG");
 
     LOG(WARNING, tag, "LOG(WARNING)");
     LOG(NOTICE, tag, "LOG(NOTICE)");
@@ -108,7 +111,7 @@ int main(int /*argc*/, char** /*argv*/)
     LOG(DEBUG, tag, "LOG(DEBUG)");
     LOG(TRACE, tag, "LOG(TRACE)");
 
-    AixLog::Severity severity(AixLog::Severity::debug);
+    aixlog::Severity severity(aixlog::Severity::debug);
     LOG(severity, tag, "LOG(severity, LOG_TAG, severity");
 
     EveryXConditional every_x(3);
@@ -119,7 +122,7 @@ int main(int /*argc*/, char** /*argv*/)
     CLOG(INFO, tag, every_x, "5th will not be logged");
     CLOG(INFO, tag, every_x, "6th will be logged");
 
-    AixLog::Conditional not_every_3(AixLog::Conditional::EvalFunc([] {
+    aixlog::Conditional not_every_3(aixlog::Conditional::EvalFunc([] {
         static size_t n(0);
         return (++n % 3 != 0);
     }));
