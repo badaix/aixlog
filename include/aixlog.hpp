@@ -173,7 +173,6 @@ static Severity to_severity(std::string severity, Severity def = Severity::info)
         return def;
 }
 
-
 static std::string to_string(Severity logSeverity)
 {
     switch (logSeverity)
@@ -198,6 +197,13 @@ static std::string to_string(Severity logSeverity)
             return ss.str();
     }
 }
+
+static std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
+{
+    os << to_string(log_severity);
+    return os;
+}
+
 
 
 /**
@@ -227,10 +233,25 @@ struct Conditional
         return func_();
     }
 
+    std::string to_string() const
+    {
+        if (is_true())
+            return "true";
+        else
+            return "false";
+    }
+
 protected:
     EvalFunc func_;
 };
-// #endif
+
+
+static std::ostream& operator<<(std::ostream& os, const Conditional& conditional)
+{
+    os << conditional.to_string();
+    return os;
+}
+
 
 /**
  * @brief
@@ -305,6 +326,13 @@ private:
     }
 };
 
+
+static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp)
+{
+    os << timestamp.to_string();
+    return os;
+}
+
 /**
  * @brief
  * Tag (string) for log line
@@ -349,6 +377,15 @@ private:
     bool is_null_;
 };
 
+
+static std::ostream& operator<<(std::ostream& os, const Tag& tag)
+{
+    os << tag.text;
+    return os;
+}
+
+
+
 /**
  * @brief
  * Capture function, file and line number of the log line
@@ -385,6 +422,14 @@ struct Function
 private:
     bool is_null_;
 };
+
+
+static std::ostream& operator<<(std::ostream& os, const Function& function)
+{
+    os << function.name;
+    return os;
+}
+
 
 /**
  * @brief
@@ -480,15 +525,6 @@ struct Sink
 
     Filter filter;
 };
-
-#ifndef USE_FMT
-/// ostream operators << for the meta data structs
-static std::ostream& operator<<(std::ostream& os, const Severity& log_severity);
-static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp);
-static std::ostream& operator<<(std::ostream& os, const Tag& tag);
-static std::ostream& operator<<(std::ostream& os, const Function& function);
-static std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
-#endif
 
 using log_sink_ptr = std::shared_ptr<Sink>;
 
@@ -1044,94 +1080,6 @@ struct SinkCallback : public Sink
 private:
     callback_fun callback_;
 };
-
-#ifndef USE_FMT
-/**
- * @brief
- * ostream << operator for "Severity"
- *
- * Severity must be the first thing that is logged into clog, since it will reset the loggers metadata.
- */
-static std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
-{
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        if (log->metadata_.severity != log_severity)
-        {
-            log->sync();
-            log->metadata_.severity = log_severity;
-            log->metadata_.timestamp = nullptr;
-            log->metadata_.tag = nullptr;
-            log->metadata_.function = nullptr;
-            log->do_log_ = true;
-        }
-    }
-    else
-    {
-        os << to_string(log_severity);
-    }
-    return os;
-}
-
-static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp)
-{
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.timestamp = timestamp;
-    }
-    else if (timestamp)
-    {
-        os << timestamp.to_string();
-    }
-    return os;
-}
-
-static std::ostream& operator<<(std::ostream& os, const Tag& tag)
-{
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.tag = tag;
-    }
-    else if (tag)
-    {
-        os << tag.text;
-    }
-    return os;
-}
-
-static std::ostream& operator<<(std::ostream& os, const Function& function)
-{
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.function = function;
-    }
-    else if (function)
-    {
-        os << function.name;
-    }
-    return os;
-}
-
-static std::ostream& operator<<(std::ostream& os, const Conditional& conditional)
-{
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->do_log_ = conditional.is_true();
-    }
-    return os;
-}
-
-#endif
 
 
 } // namespace AixLog
