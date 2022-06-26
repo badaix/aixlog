@@ -13,10 +13,14 @@
 
 
 #include <aixlog/aixlog.hpp>
+#include <aixlog/sinks/sink_callback.hpp>
 #include <aixlog/sinks/sink_cerr.hpp>
 #include <aixlog/sinks/sink_cout.hpp>
 #include <aixlog/sinks/sink_file.hpp>
+#include <aixlog/sinks/sink_native.hpp>
+#include <aixlog/sinks/sink_output_debug_string.hpp>
 
+#include <functional>
 
 using namespace std;
 
@@ -71,7 +75,7 @@ int main(int /*argc*/, char** /*argv*/)
     aixlog::Filter filter_syslog;
     // log lines with tag "SYSLOG" to syslog
     filter_syslog.add_filter("SYSLOG:TRACE");
-    auto sink_syslog = make_shared<aixlog::SinkNative>("aixlog example", filter_syslog);
+    auto sink_syslog = make_shared<aixlog::sinks::SinkNative>("aixlog example", filter_syslog);
 
     aixlog::Log::set_logsinks({sink_cout, sink_syslog});
 
@@ -79,27 +83,27 @@ int main(int /*argc*/, char** /*argv*/)
     LOG(TRACE, "OTHER TAG", "Logger with one cout log sink (not filtered out)");
     LOG(DEBUG, "SYSLOG", "This will go also to syslog");
 
-    aixlog::Log::set_logsinks({/// Log everything into file "all.log"
-                               make_shared<aixlog::sinks::SinkFile>(aixlog::Severity::trace, "all.log"),
-                               /// Log everything to SinkCout
-                               make_shared<aixlog::sinks::SinkCout>(aixlog::Severity::trace, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func) #message"),
-                               /// Log error and higher severity messages to cerr
-                               make_shared<aixlog::sinks::SinkCerr>(aixlog::Severity::error, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)"),
-                               /// Callback log sink with cout logging in a lambda function
-                               /// Could also do file logging
-                               make_shared<aixlog::SinkCallback>(aixlog::Severity::trace, [](const aixlog::Metadata& metadata, const std::string& message) {
-                                   cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag << "\n\tsever: " << metadata.severity << " ("
-                                        << static_cast<int>(metadata.severity) << ")\n"
-                                        << "\ttid:   " << metadata.thread_id << "\n";
-                                   if (metadata.timestamp)
-                                       cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
-                                   if (metadata.function)
-                                       cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line
-                                            << "\n\tfile:  " << metadata.function.file << "\n";
-                               })});
+    aixlog::Log::set_logsinks(
+        {/// Log everything into file "all.log"
+         make_shared<aixlog::sinks::SinkFile>(aixlog::Severity::trace, "all.log"),
+         /// Log everything to SinkCout
+         make_shared<aixlog::sinks::SinkCout>(aixlog::Severity::trace, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func) #message"),
+         /// Log error and higher severity messages to cerr
+         make_shared<aixlog::sinks::SinkCerr>(aixlog::Severity::error, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)"),
+         /// Callback log sink with cout logging in a lambda function
+         /// Could also do file logging
+         make_shared<aixlog::sinks::SinkCallback>(aixlog::Severity::trace, [](const aixlog::Metadata& metadata, const std::string& message) {
+             cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag << "\n\tsever: " << metadata.severity << " ("
+                  << static_cast<int>(metadata.severity) << ")\n"
+                  << "\ttid:   " << metadata.thread_id << "\n";
+             if (metadata.timestamp)
+                 cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
+             if (metadata.function)
+                 cout << "\tfunc:  " << metadata.function.name << "\n\tline:  " << metadata.function.line << "\n\tfile:  " << metadata.function.file << "\n";
+         })});
 
 #ifdef WIN32
-    aixlog::Log::add_logsink<aixlog::SinkOutputDebugString>(aixlog::Severity::trace);
+    aixlog::Log::add_logsink<aixlog::sinks::SinkOutputDebugString>(aixlog::Severity::trace);
 #endif
     LOG(INFO, "guten tag", "LOG(INFO, \"guten tag\")");
 
