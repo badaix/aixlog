@@ -51,7 +51,7 @@ Header-only C++ logging library
 To use AixLog, you must once pass a log sink to `AixLog:Log::init`, e.g. a `SinkCout`:
 
 ```c++
-AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace);
 LOG(INFO) << "Hello, World!\n";
 ```
 
@@ -66,7 +66,7 @@ There are two overloads for `AixLog:Log::init`:
 1. one creates and returns an instance of a Sink (as in the example above)
 
    ```c++
-   auto sink = AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+   auto sink = AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace);
    ```
 
 The `sink` can be used to change the severity or to remove it from the Logger
@@ -74,8 +74,8 @@ The `sink` can be used to change the severity or to remove it from the Logger
 2. one takes a vector of Sinks
 
    ```c++
-   auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
-   auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "logfile.log");
+   auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace);
+   auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, "logfile.log");
    AixLog::Log::init({sink_cout, sink_file});
    ```
 
@@ -89,7 +89,7 @@ You can easily fit AixLog to your needs by adding your own sink, that derives fr
 AixLog::Log::init<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
     [](const AixLog::Metadata& metadata, const std::string& message)
     {
-        cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+        cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << "\n";
         if (metadata.timestamp)
             cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
         if (metadata.function)
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
     AixLog::Log::init(
         {
             /// Log normal (i.e. non-special) logs to SinkCout
-            make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #message"),
+            make_shared<AixLog::SinkCout>(AixLog::Severity::trace, "cout: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag) #message"),
             /// Log error and higher severity messages to cerr
             make_shared<AixLog::SinkCerr>(AixLog::Severity::error, AixLog::Type::all, "cerr: %Y-%m-%d %H-%M-%S.#ms [#severity] (#tag)"),
             /// Log special logs to native log (Syslog on Linux, Android Log on Android, EventLog on Windows, Unified logging on Apple)
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
             make_shared<AixLog::SinkCallback>(AixLog::Severity::trace, AixLog::Type::all, 
                 [](const AixLog::Metadata& metadata, const std::string& message)
                 {
-                    cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << ")\n\ttype:  " << (metadata.type == AixLog::Type::normal?"normal":"special") << "\n";
+                    cout << "Callback:\n\tmsg:   " << message << "\n\ttag:   " << metadata.tag.text << "\n\tsever: " << AixLog::Log::to_string(metadata.severity) << " (" << (int)metadata.severity << "\n";
                     if (metadata.timestamp)
                         cout << "\ttime:  " << metadata.timestamp.to_string() << "\n";
                     if (metadata.function)
