@@ -4,14 +4,14 @@
 # \_/\_/(__)(_/\_)\____/ \__/  \___/
 
 # This file is part of aixlog
-# Copyright (C) 2017-2021 Johannes Pohl
+# Copyright (C) 2017-2025 Johannes Pohl
 
 # This software may be modified and distributed under the terms
 # of the MIT license.  See the LICENSE file for details.
 
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.5)
 
-project(aixlog VERSION 1.5.0 LANGUAGES CXX)
+project(aixlog VERSION 1.5.1 LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "Header-only C++ logging library")
 set(PROJECT_URL "https://github.com/badaix/aixlog")
 

@@ -7,6 +7,7 @@ AllowShortIfStatementsOnASingleLine: 'false'
 AllowShortLoopsOnASingleLine: 'false'
 AlwaysBreakTemplateDeclarations: 'true'
 BreakBeforeBraces: Allman
+LambdaBodyIndentation: OuterScope
 ColumnLimit: '160'
 IndentCaseLabels: 'true'
 IndentWidth: '4'
@@ -14,7 +15,7 @@ Language: Cpp
 MaxEmptyLinesToKeep: '3'
 PenaltyBreakComment: '100000'
 PointerAlignment: Left
-Standard: Cpp11
+Standard: Latest
 UseTab: Never
 
 ...

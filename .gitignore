@@ -41,3 +41,4 @@ all.log
 #vscode
 .vscode
 
+.cache

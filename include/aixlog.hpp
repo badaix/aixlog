@@ -3,11 +3,11 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.5.0
+    version 1.5.1
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
-    Copyright (C) 2017-2021 Johannes Pohl
+    Copyright (C) 2017-2025 Johannes Pohl
 
     This software may be modified and distributed under the terms
     of the MIT license.  See the LICENSE file for details.
@@ -275,7 +275,7 @@ struct Conditional
     {
     }
 
-    Conditional(const EvalFunc& func) : func_(func)
+    Conditional(EvalFunc func) : func_(std::move(func))
     {
     }
 
@@ -316,7 +316,7 @@ struct Timestamp
     {
     }
 
-    Timestamp(time_point_sys_clock&& time_point) : time_point(std::move(time_point)), is_null_(false)
+    Timestamp(time_point_sys_clock&& time_point) : time_point(time_point), is_null_(false)
     {
     }
 
@@ -373,7 +373,7 @@ private:
  */
 struct Tag
 {
-    Tag(std::nullptr_t) : text(""), is_null_(true)
+    Tag(std::nullptr_t) : is_null_(true)
     {
     }
 
@@ -425,7 +425,7 @@ struct Function
     {
     }
 
-    Function(std::nullptr_t) : name(""), file(""), line(0), is_null_(true)
+    Function(std::nullptr_t) : line(0), is_null_(true)
     {
     }
 
@@ -505,7 +505,7 @@ public:
 
     void add_filter(const std::string& filter)
     {
-        auto pos = filter.find(":");
+        auto pos = filter.find(':');
         if (pos != std::string::npos)
             add_filter(filter.substr(0, pos), to_severity(filter.substr(pos + 1)));
         else
@@ -525,7 +525,7 @@ private:
  */
 struct Sink
 {
-    Sink(const Filter& filter) : filter(filter)
+    Sink(Filter filter) : filter(std::move(filter))
     {
     }
 
@@ -565,7 +565,7 @@ public:
     }
 
     /// Without "init" every LOG(X) will simply go to clog
-    static void init(const std::vector<log_sink_ptr> log_sinks = {})
+    static void init(const std::vector<log_sink_ptr>& log_sinks = {})
     {
         Log::instance().log_sinks_.clear();
 
@@ -762,14 +762,14 @@ protected:
         if (pos != std::string::npos)
         {
             result.replace(pos, 8, message);
-            stream << result << std::endl;
+            stream << result << "\n";
         }
         else
         {
             if (result.empty() || (result.back() == ' '))
-                stream << result << message << std::endl;
+                stream << result << message << "\n";
             else
-                stream << result << " " << message << std::endl;
+                stream << result << " " << message << "\n";
         }
     }
 
@@ -941,7 +941,7 @@ struct SinkSyslog : public Sink
 
     void log(const Metadata& metadata, const std::string& message) override
     {
-        syslog(get_syslog_priority(metadata.severity), "%s", message.c_str());
+        syslog(get_syslog_priority(metadata.severity), "[%s] %s", metadata.tag.text.c_str(), message.c_str());
     }
 };
 #endif
@@ -1116,7 +1116,7 @@ struct SinkCallback : public Sink
 {
     using callback_fun = std::function<void(const Metadata& metadata, const std::string& message)>;
 
-    SinkCallback(const Filter& filter, callback_fun callback) : Sink(filter), callback_(callback)
+    SinkCallback(const Filter& filter, callback_fun callback) : Sink(filter), callback_(std::move(callback))
     {
     }
 
