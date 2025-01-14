@@ -941,7 +941,7 @@ struct SinkSyslog : public Sink
 
     void log(const Metadata& metadata, const std::string& message) override
     {
-        syslog(get_syslog_priority(metadata.severity), "[%s] %s", metadata.tag.text.c_str(), message.c_str());
+        syslog(get_syslog_priority(metadata.severity), "(%s) %s", metadata.tag.text.c_str(), message.c_str());
     }
 };
 #endif
