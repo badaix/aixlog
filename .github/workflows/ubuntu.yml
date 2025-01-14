@@ -1,4 +1,4 @@
-name: Ubuntu-amd64
+name: CI
 
 on: [push, pull_request]
 
@@ -200,4 +200,4 @@ jobs:
       - name: build
         run: cmake --build build --parallel 3
       - name: test
-        run: ./build/aixlog_example
+        run: build\aixlog_example.exe
