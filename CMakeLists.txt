@@ -16,9 +16,23 @@ set(PROJECT_DESCRIPTION "Header-only C++ logging library")
 set(PROJECT_URL "https://github.com/badaix/aixlog")
 
 option(BUILD_EXAMPLE "Build example (build aixlog_example demo)" ON)
+option(WERROR "Treat warnings as errors" OFF)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(MSVC)
+  add_compile_options(/W4)
+  if(WERROR)
+    add_compile_options(/WX)
+  endif()
+else()
+  # lots of warnings and all warnings as errors
+  add_compile_options(-Wall -Wextra -pedantic -Wno-unused-function)
+  if(WERROR)
+    add_compile_options(-Werror)
+  endif()
+endif()
 
 
 if(NOT DEFINED CMAKE_INSTALL_INCLUDEDIR)
