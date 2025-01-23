@@ -9,9 +9,9 @@
 ### Bugfixes
 
 - Update readme to remove confusing outdated "AixLog::Type" from the docs (PR #16)
-- Fix spme clang tidy static analysis issues
+- Fix some clang tidy static analysis issues
 
-_Johannes Pohl <snapcast@badaix.de>  Sun, 19 Jan 2025 00:13:37 +0200_
+_Johannes Pohl <snapcast@badaix.de>  Sun, 26 Jan 2025 00:13:37 +0200_
 
 ## Version 1.5.0
 

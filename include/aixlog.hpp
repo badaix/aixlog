@@ -762,14 +762,14 @@ protected:
         if (pos != std::string::npos)
         {
             result.replace(pos, 8, message);
-            stream << result << "\n";
+            stream << result << std::endl;
         }
         else
         {
             if (result.empty() || (result.back() == ' '))
-                stream << result << message << "\n";
+                stream << result << message << std::endl;
             else
-                stream << result << " " << message << "\n";
+                stream << result << " " << message << std::endl;
         }
     }
 
