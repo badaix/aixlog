@@ -9,7 +9,7 @@
 # This software may be modified and distributed under the terms
 # of the MIT license.  See the LICENSE file for details.
 
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.0.0...3.10)
 
 project(aixlog VERSION 1.5.0 LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "Header-only C++ logging library")
