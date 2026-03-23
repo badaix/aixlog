@@ -51,6 +51,9 @@
 #endif
 
 #ifdef _WIN32
+// Prevent name collisions with Windows.h macros
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <Windows.h>
 // ERROR macro is defined in Windows header
 // To avoid conflict between these macro and declaration of ERROR / DEBUG in SEVERITY enum
