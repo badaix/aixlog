@@ -454,7 +454,7 @@ private:
  */
 struct Metadata
 {
-    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(nullptr)
+    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(nullptr), buffer()
     {
     }
 
@@ -462,6 +462,7 @@ struct Metadata
     Tag tag;
     Function function;
     Timestamp timestamp;
+    std::stringstream buffer;
 };
 
 
@@ -604,7 +605,7 @@ public:
     }
 
 protected:
-    Log() noexcept : last_buffer_(nullptr), do_log_(true)
+    Log() noexcept : last_metadata_(nullptr), do_log_(true)
     {
         std::clog.rdbuf(this);
         std::clog << Severity() << Tag() << Function() << Conditional() << AixLog::Color::NONE << std::flush;
@@ -624,8 +625,8 @@ protected:
             {
                 for (const auto& sink : log_sinks_)
                 {
-                    if (sink->filter.match(metadata_))
-                        sink->log(metadata_, get_stream().str());
+                    if (sink->filter.match(get_meta()))
+                        sink->log(get_meta(), get_stream().str());
                 }
             }
             get_stream().str("");
@@ -661,22 +662,26 @@ private:
 
     std::stringstream& get_stream()
     {
-        auto id = std::this_thread::get_id();
-        if ((last_buffer_ == nullptr) || (last_id_ != id))
-        {
-            last_id_ = id;
-            last_buffer_ = &(buffer_[id]);
-        }
-        return *last_buffer_;
+        return get_meta().buffer;
     }
 
-    /// one buffer per thread to avoid mixed log lines
-    std::map<std::thread::id, std::stringstream> buffer_;
+    Metadata& get_meta()
+    {
+        const auto id = std::this_thread::get_id();
+        if ((last_metadata_ == nullptr) || (last_id_ != id))
+        {
+            last_id_     = id;
+            last_metadata_ = &(metadata_[id]);
+        }
+        return *last_metadata_;
+    }
+
+    /// one metadata per thread to avoid mixed log lines
+    std::map<std::thread::id, Metadata> metadata_;
     /// the last thread id
     std::thread::id last_id_;
-    /// the last buffer
-    std::stringstream* last_buffer_ = nullptr;
-    Metadata metadata_;
+    /// the last metadata object
+    Metadata* last_metadata_ = nullptr;
     bool do_log_;
     std::vector<log_sink_ptr> log_sinks_;
     std::recursive_mutex mutex_;
@@ -1142,13 +1147,13 @@ static std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
     if (log != nullptr)
     {
         std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        if (log->metadata_.severity != log_severity)
+        if (log->get_meta().severity != log_severity)
         {
             log->sync();
-            log->metadata_.severity = log_severity;
-            log->metadata_.timestamp = nullptr;
-            log->metadata_.tag = nullptr;
-            log->metadata_.function = nullptr;
+            log->get_meta().severity = log_severity;
+            log->get_meta().timestamp = nullptr;
+            log->get_meta().tag = nullptr;
+            log->get_meta().function = nullptr;
             log->do_log_ = true;
         }
     }
@@ -1165,7 +1170,7 @@ static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp)
     if (log != nullptr)
     {
         std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.timestamp = timestamp;
+        log->get_meta().timestamp = timestamp;
     }
     else if (timestamp)
     {
@@ -1180,7 +1185,7 @@ static std::ostream& operator<<(std::ostream& os, const Tag& tag)
     if (log != nullptr)
     {
         std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.tag = tag;
+        log->get_meta().tag = tag;
     }
     else if (tag)
     {
@@ -1195,7 +1200,7 @@ static std::ostream& operator<<(std::ostream& os, const Function& function)
     if (log != nullptr)
     {
         std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.function = function;
+        log->get_meta().function = function;
     }
     else if (function)
     {
