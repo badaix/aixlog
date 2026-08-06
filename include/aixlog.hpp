@@ -537,13 +537,13 @@ struct Sink
 };
 
 /// ostream operators << for the meta data structs
-static std::ostream& operator<<(std::ostream& os, const Severity& log_severity);
-static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp);
-static std::ostream& operator<<(std::ostream& os, const Tag& tag);
-static std::ostream& operator<<(std::ostream& os, const Function& function);
-static std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
-static std::ostream& operator<<(std::ostream& os, const Color& color);
-static std::ostream& operator<<(std::ostream& os, const TextColor& text_color);
+static inline std::ostream& operator<<(std::ostream& os, const Severity& log_severity);
+static inline std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp);
+static inline std::ostream& operator<<(std::ostream& os, const Tag& tag);
+static inline std::ostream& operator<<(std::ostream& os, const Function& function);
+static inline std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
+static inline std::ostream& operator<<(std::ostream& os, const Color& color);
+static inline std::ostream& operator<<(std::ostream& os, const TextColor& text_color);
 
 using log_sink_ptr = std::shared_ptr<Sink>;
 
@@ -1136,7 +1136,7 @@ private:
  *
  * Severity must be the first thing that is logged into clog, since it will reset the loggers metadata.
  */
-static std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
+static inline std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
 {
     Log* log = dynamic_cast<Log*>(os.rdbuf());
     if (log != nullptr)
@@ -1159,7 +1159,7 @@ static std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
     return os;
 }
 
-static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp)
+static inline std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp)
 {
     Log* log = dynamic_cast<Log*>(os.rdbuf());
     if (log != nullptr)
@@ -1174,7 +1174,7 @@ static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp)
     return os;
 }
 
-static std::ostream& operator<<(std::ostream& os, const Tag& tag)
+static inline std::ostream& operator<<(std::ostream& os, const Tag& tag)
 {
     Log* log = dynamic_cast<Log*>(os.rdbuf());
     if (log != nullptr)
@@ -1189,7 +1189,7 @@ static std::ostream& operator<<(std::ostream& os, const Tag& tag)
     return os;
 }
 
-static std::ostream& operator<<(std::ostream& os, const Function& function)
+static inline std::ostream& operator<<(std::ostream& os, const Function& function)
 {
     Log* log = dynamic_cast<Log*>(os.rdbuf());
     if (log != nullptr)
@@ -1204,7 +1204,7 @@ static std::ostream& operator<<(std::ostream& os, const Function& function)
     return os;
 }
 
-static std::ostream& operator<<(std::ostream& os, const Conditional& conditional)
+static inline std::ostream& operator<<(std::ostream& os, const Conditional& conditional)
 {
     Log* log = dynamic_cast<Log*>(os.rdbuf());
     if (log != nullptr)
@@ -1215,7 +1215,7 @@ static std::ostream& operator<<(std::ostream& os, const Conditional& conditional
     return os;
 }
 
-static std::ostream& operator<<(std::ostream& os, const TextColor& text_color)
+static inline std::ostream& operator<<(std::ostream& os, const TextColor& text_color)
 {
     os << "\033[";
     if ((text_color.foreground == Color::none) && (text_color.background == Color::none))
@@ -1234,7 +1234,7 @@ static std::ostream& operator<<(std::ostream& os, const TextColor& text_color)
     return os;
 }
 
-static std::ostream& operator<<(std::ostream& os, const Color& color)
+static inline std::ostream& operator<<(std::ostream& os, const Color& color)
 {
     os << TextColor(color);
     return os;
